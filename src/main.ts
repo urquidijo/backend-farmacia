@@ -11,11 +11,15 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.enableCors({
-    origin: 'http://localhost:3001', // tu front Next
-    credentials: true, // por si luego usas cookies
-  });
+app.enableCors({
+  origin: [
+    'http://localhost:3000', // desarrollo local
+    'https://frontend-farmacia-iota.vercel.app', // frontend en Vercel
+  ],
+  credentials: true,
+});
 
-  await app.listen(process.env.PORT ?? 3000);
+
+  await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
