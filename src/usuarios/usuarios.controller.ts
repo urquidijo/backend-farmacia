@@ -9,7 +9,7 @@ import { LoginDto } from './dto/login.dto';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
-  @Post('/login')
+  @Post('login')
   login(@Body() loginDto: LoginDto) {
     return this.usuariosService.login(loginDto);
   }
