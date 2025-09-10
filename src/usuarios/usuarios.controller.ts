@@ -1,41 +1,34 @@
-import { Controller, Get, Post, Body, Param, Delete, Put } from '@nestjs/common';
-import { UsuariosService } from './usuarios.service';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
-import { IdValidationPipe } from 'src/common/pipes/id-validation/id-validation.pipe';
-import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from './dto/create-usuario.dto';
+import { UpdateUserDto } from './dto/update-usuario.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, ParseIntPipe } from '@nestjs/common'
+import { UsersService } from './usuarios.service'
 
-@Controller('usuarios')
-export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+import { Permissions } from '../auth/decorators/permissions.decorator'
+import { PermissionsGuard } from '../auth/guards/permissions.guard'
+import { AuthGuard } from '@nestjs/passport'
 
-  @Post('login')
-  login(@Body() loginDto: LoginDto) {
-    return this.usuariosService.login(loginDto);
-  }
-  
-    @Post()
-  create(@Body() createUsuarioDto: CreateUsuarioDto) {
-    return this.usuariosService.createUser(createUsuarioDto);
-  }
+@Controller('users')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+export class UsersController {
+  constructor(private users: UsersService) {}
 
   @Get()
-  findAll() {
-    return this.usuariosService.findAllUser();
-  }
+  @Permissions('user.read')
+  findAll() { return this.users.findAll() }
 
-  @Get(':id')
-  findOne(@Param('id',IdValidationPipe) id: string) {
-    return this.usuariosService.findOneUser(+id);
-  }
+  @Post('internal')
+  @Permissions('user.create')
+  create(@Body() dto: CreateUserDto) { return this.users.create(dto) }
 
-  @Put(':id')
-  update(@Param('id',IdValidationPipe) id: string, @Body() updateUsuarioDto: UpdateUsuarioDto) {
-    return this.usuariosService.updateUser(+id, updateUsuarioDto);
+  @Patch(':id')
+  @Permissions('user.update')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+    return this.users.update(id, dto)
   }
 
   @Delete(':id')
-  remove(@Param('id',IdValidationPipe) id: string) {
-    return this.usuariosService.removeUser(+id);
+  @Permissions('user.delete')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.users.remove(id)
   }
 }
