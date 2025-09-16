@@ -71,3 +71,49 @@ permission Permission @relation(fields: [permissionId], references: [id])
 
 @@id([roleId, permissionId])
 }
+
+model Marca {
+id Int @id @default(autoincrement())
+nombre String @unique
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+productos Producto[]
+}
+
+model Categoria {
+id Int @id @default(autoincrement())
+nombre String @unique
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+productos Producto[]
+}
+
+model Unidad {
+id Int @id @default(autoincrement())
+codigo String @unique
+nombre String
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+productos Producto[]
+}
+
+model Producto {
+id Int @id @default(autoincrement())
+nombre String
+descripcion String?
+stockMinimo Int @default(0)
+activo Boolean @default(true)
+creadoEn DateTime @default(now())
+actualizadoEn DateTime @updatedAt
+
+marcaId Int
+categoriaId Int
+unidadId Int
+
+marca Marca @relation(fields: [marcaId], references: [id])
+categoria Categoria @relation(fields: [categoriaId], references: [id])
+unidad Unidad @relation(fields: [unidadId], references: [id])
+}
