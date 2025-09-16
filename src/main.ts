@@ -18,6 +18,9 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'https://frontend-farmacia-iota.vercel.app',
+      'http://localhost:8081',
+      'http://192.168.26.3:8081',
+      'http://192.168.15.40:8081',
     ],
     credentials: true,
   })

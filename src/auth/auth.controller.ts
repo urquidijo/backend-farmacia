@@ -14,7 +14,16 @@ async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
 const user = await this.auth.validateUser(dto.email, dto.password)
 const token = this.auth.signToken(user.id, user.email)
 res.cookie('access_token', token, { httpOnly: true, sameSite: 'lax', secure: false, path: '/' })
-return { message: 'ok' }
+return {
+  message: 'ok',
+  access_token: token,
+  user: {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName
+  }
+}
 }
 
 
