@@ -8,16 +8,21 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common'
 import { AuthGuard } from '@nestjs/passport'
 import { ProductosService } from './productos.service'
 import { CreateProductoDto } from './dto/create-producto.dto'
 import { UpdateProductoDto } from './dto/update-producto.dto'
+import { S3Service } from '../s3/s3.service'
 
 @Controller('productos')
 @UseGuards(AuthGuard('jwt'))
 export class ProductosController {
-  constructor(private readonly productosService: ProductosService) {}
+  constructor(
+    private readonly productosService: ProductosService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   @Post()
   create(@Body() createProductoDto: CreateProductoDto) {
@@ -25,8 +30,20 @@ export class ProductosController {
   }
 
   @Get()
-  findAll() {
-    return this.productosService.findAll()
+  findAll(@Query('q') q?: string, @Query('page') page?: string, @Query('size') size?: string) {
+    const pageNum = page ? parseInt(page) : 1
+    const sizeNum = size ? parseInt(size) : 10
+    return this.productosService.findAll(q, pageNum, sizeNum)
+  }
+
+  @Get('presign')
+  async getPresignedUrl(
+    @Query('filename') filename?: string,
+    @Query('contentType') contentType?: string,
+  ) {
+    const safe = (filename ?? 'img.webp').replace(/\s+/g, '-').toLowerCase()
+    const key = `productos/tmp/${Date.now()}-${safe}`
+    return this.s3Service.putPresign(key, contentType || 'image/webp')
   }
 
   @Get(':id')

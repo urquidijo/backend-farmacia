@@ -33,4 +33,12 @@ export class CreateProductoDto {
   @IsInt()
   @Transform(({ value }) => parseInt(value))
   unidadId: number
+
+  @IsOptional()
+  @IsString()
+  imageKey?: string
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string
 }

@@ -106,6 +106,8 @@ nombre String
 descripcion String?
 stockMinimo Int @default(0)
 activo Boolean @default(true)
+imageKey String?
+imageUrl String?
 creadoEn DateTime @default(now())
 actualizadoEn DateTime @updatedAt
 

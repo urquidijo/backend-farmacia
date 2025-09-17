@@ -21,15 +21,40 @@ export class ProductosService {
     })
   }
 
-  async findAll() {
-    return this.prisma.producto.findMany({
-      orderBy: { nombre: 'asc' },
-      include: {
-        marca: true,
-        categoria: true,
-        unidad: true,
-      },
-    })
+  async findAll(q?: string, page: number = 1, size: number = 10) {
+    const where = q
+      ? {
+          OR: [
+            { nombre: { contains: q, mode: 'insensitive' as const } },
+            { descripcion: { contains: q, mode: 'insensitive' as const } },
+            { marca: { nombre: { contains: q, mode: 'insensitive' as const } } },
+            { categoria: { nombre: { contains: q, mode: 'insensitive' as const } } },
+          ],
+        }
+      : {}
+
+    const [productos, total] = await Promise.all([
+      this.prisma.producto.findMany({
+        where,
+        orderBy: { nombre: 'asc' },
+        include: {
+          marca: true,
+          categoria: true,
+          unidad: true,
+        },
+        skip: (page - 1) * size,
+        take: size,
+      }),
+      this.prisma.producto.count({ where }),
+    ])
+
+    return {
+      productos,
+      total,
+      page,
+      size,
+      totalPages: Math.ceil(total / size),
+    }
   }
 
   async findOne(id: number) {

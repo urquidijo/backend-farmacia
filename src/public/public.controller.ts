@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common'
+import { Body, Controller, Post, Get, Query } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { PublicRegisterDto } from './dto/public-register.dto'
 import * as bcrypt from 'bcrypt'
@@ -42,5 +42,41 @@ export class PublicController {
       }
       throw e
     }
+  }
+
+  @Get('productos')
+  async getProductos(@Query('categoria') categoria?: string, @Query('q') q?: string, @Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit) : 20
+
+    const where: any = { activo: true }
+
+    if (categoria) {
+      where.categoria = { nombre: { contains: categoria, mode: 'insensitive' } }
+    }
+
+    if (q) {
+      where.OR = [
+        { nombre: { contains: q, mode: 'insensitive' } },
+        { descripcion: { contains: q, mode: 'insensitive' } },
+        { marca: { nombre: { contains: q, mode: 'insensitive' } } },
+      ]
+    }
+
+    return this.prisma.producto.findMany({
+      where,
+      orderBy: { creadoEn: 'desc' },
+      include: {
+        marca: true,
+        categoria: true,
+      },
+      take: limitNum,
+    })
+  }
+
+  @Get('categorias')
+  async getCategorias() {
+    return this.prisma.categoria.findMany({
+      orderBy: { nombre: 'asc' },
+    })
   }
 }
