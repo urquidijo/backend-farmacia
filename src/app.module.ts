@@ -12,6 +12,7 @@ import { MarcasModule } from './marcas/marcas.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { UnidadesModule } from './unidades/unidades.module';
 import { ProductosModule } from './productos/productos.module';
+import { ClientesModule } from './clientes/clientes.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ProductosModule } from './productos/productos.module';
     CategoriasModule,
     UnidadesModule,
     ProductosModule,
+    ClientesModule,
   ],
   controllers: [MeController],
 })

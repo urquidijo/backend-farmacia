@@ -119,3 +119,16 @@ marca Marca @relation(fields: [marcaId], references: [id])
 categoria Categoria @relation(fields: [categoriaId], references: [id])
 unidad Unidad @relation(fields: [unidadId], references: [id])
 }
+
+model Cliente {
+id Int @id @default(autoincrement())
+nombre String
+apellido String?
+nit String? @unique
+telefono String?
+email String?
+direccion String?
+activo Boolean @default(true)
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+}

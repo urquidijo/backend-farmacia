@@ -17,6 +17,11 @@ async function main() {
     // Órdenes
     { key: 'order.read', description: 'Ver órdenes' },
     { key: 'order.manage', description: 'Gestionar órdenes' },
+    // Clientes
+    { key: 'cliente.read', description: 'Ver clientes' },
+    { key: 'cliente.create', description: 'Crear clientes' },
+    { key: 'cliente.update', description: 'Actualizar clientes' },
+    { key: 'cliente.delete', description: 'Eliminar clientes' },
   ];
 
   await prisma.permission.createMany({ data: perms, skipDuplicates: true });
@@ -55,6 +60,9 @@ async function main() {
     'order.read',
     'order.manage',
     'inv.read',
+    'cliente.read',
+    'cliente.create',
+    'cliente.update',
   ].map((k) => ({ roleId: vendedorRole.id, permissionId: get(k) }));
   const clientePerms = ['prod.read'].map((k) => ({
     roleId: clienteRole.id,
