@@ -25,6 +25,8 @@ updatedAt DateTime @updatedAt
 
 
 roles UserRole[]
+carritoItems CarritoItem[]
+ordenes Orden[]
 }
 
 
@@ -119,6 +121,8 @@ unidadId Int
 marca Marca @relation(fields: [marcaId], references: [id])
 categoria Categoria @relation(fields: [categoriaId], references: [id])
 unidad Unidad @relation(fields: [unidadId], references: [id])
+carritoItems CarritoItem[]
+ordenItems OrdenItem[]
 }
 
 model Cliente {
@@ -132,4 +136,50 @@ direccion String?
 activo Boolean @default(true)
 createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt
+}
+
+model CarritoItem {
+id Int @id @default(autoincrement())
+userId Int
+productoId Int
+cantidad Int @default(1)
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+@@unique([userId, productoId])
+}
+
+enum EstadoOrden {
+PENDIENTE
+PAGADA
+ENVIADA
+ENTREGADA
+CANCELADA
+}
+
+model Orden {
+id Int @id @default(autoincrement())
+userId Int
+total Decimal
+estado EstadoOrden @default(PENDIENTE)
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+user User @relation(fields: [userId], references: [id])
+items OrdenItem[]
+}
+
+model OrdenItem {
+id Int @id @default(autoincrement())
+ordenId Int
+productoId Int
+cantidad Int
+precioUnitario Decimal
+subtotal Decimal
+
+orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+producto Producto @relation(fields: [productoId], references: [id])
 }

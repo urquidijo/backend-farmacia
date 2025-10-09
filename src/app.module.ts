@@ -13,6 +13,7 @@ import { CategoriasModule } from './categorias/categorias.module';
 import { UnidadesModule } from './unidades/unidades.module';
 import { ProductosModule } from './productos/productos.module';
 import { ClientesModule } from './clientes/clientes.module';
+import { CarritoModule } from './carrito/carrito.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ClientesModule } from './clientes/clientes.module';
     UnidadesModule,
     ProductosModule,
     ClientesModule,
+    CarritoModule,
   ],
   controllers: [MeController],
 })
