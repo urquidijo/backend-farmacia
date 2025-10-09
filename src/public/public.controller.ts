@@ -62,7 +62,7 @@ export class PublicController {
       ]
     }
 
-    return this.prisma.producto.findMany({
+    const productos = await this.prisma.producto.findMany({
       where,
       orderBy: { creadoEn: 'desc' },
       include: {
@@ -71,6 +71,12 @@ export class PublicController {
       },
       take: limitNum,
     })
+
+    // Convertir Decimal a número para enviar al frontend
+    return productos.map(p => ({
+      ...p,
+      precio: p.precio.toNumber(),
+    }))
   }
 
   @Get('categorias')

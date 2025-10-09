@@ -104,6 +104,7 @@ model Producto {
 id Int @id @default(autoincrement())
 nombre String
 descripcion String?
+precio Decimal @default(0)
 stockMinimo Int @default(0)
 activo Boolean @default(true)
 imageKey String?

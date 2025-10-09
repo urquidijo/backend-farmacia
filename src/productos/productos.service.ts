@@ -49,7 +49,10 @@ export class ProductosService {
     ])
 
     return {
-      productos,
+      productos: productos.map(p => ({
+        ...p,
+        precio: p.precio.toNumber(),
+      })),
       total,
       page,
       size,
@@ -71,7 +74,10 @@ export class ProductosService {
       throw new NotFoundException(`Producto con ID ${id} no encontrado`)
     }
 
-    return producto
+    return {
+      ...producto,
+      precio: producto.precio.toNumber(),
+    }
   }
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {

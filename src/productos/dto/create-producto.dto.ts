@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, Min, MaxLength } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, Min, MaxLength, IsNumber } from 'class-validator'
 import { Transform } from 'class-transformer'
 
 export class CreateProductoDto {
@@ -11,6 +11,11 @@ export class CreateProductoDto {
   @IsString()
   @MaxLength(500)
   descripcion?: string
+
+  @IsNumber()
+  @Min(0)
+  @Transform(({ value }) => parseFloat(value))
+  precio: number
 
   @IsInt()
   @Min(0)
