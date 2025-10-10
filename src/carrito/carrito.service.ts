@@ -12,11 +12,15 @@ export class CarritoService {
       where: { userId },
       include: {
         producto: {
-          include: {
-            marca: true,
-            categoria: true,
-            unidad: true,
-          },
+          select: {
+            id: true,
+            nombre: true,
+            precio: true,
+            imageUrl: true,
+            marca: {
+              select: { nombre: true }
+            }
+          }
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -63,11 +67,13 @@ export class CarritoService {
         data: { cantidad: existingItem.cantidad + dto.cantidad },
         include: {
           producto: {
-            include: {
-              marca: true,
-              categoria: true,
-              unidad: true,
-            },
+            select: {
+              id: true,
+              nombre: true,
+              precio: true,
+              imageUrl: true,
+              marca: { select: { nombre: true } }
+            }
           },
         },
       })
@@ -90,11 +96,13 @@ export class CarritoService {
       },
       include: {
         producto: {
-          include: {
-            marca: true,
-            categoria: true,
-            unidad: true,
-          },
+          select: {
+            id: true,
+            nombre: true,
+            precio: true,
+            imageUrl: true,
+            marca: { select: { nombre: true } }
+          }
         },
       },
     })
@@ -125,11 +133,13 @@ export class CarritoService {
       data: { cantidad: dto.cantidad },
       include: {
         producto: {
-          include: {
-            marca: true,
-            categoria: true,
-            unidad: true,
-          },
+          select: {
+            id: true,
+            nombre: true,
+            precio: true,
+            imageUrl: true,
+            marca: { select: { nombre: true } }
+          }
         },
       },
     })
