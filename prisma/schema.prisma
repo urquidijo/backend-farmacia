@@ -14,173 +14,186 @@ enum UserStatus {
 }
 
 model User {
-id Int @id @default(autoincrement())
-email String @unique
-passwordHash String
-firstName String
-lastName String
-telefono String?
-status UserStatus @default(ACTIVE)
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  telefono     String?
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
+  roles        UserRole[]
+  carritoItems CarritoItem[]
+  ordenes      Orden[]
 
-roles UserRole[]
-carritoItems CarritoItem[]
-ordenes Orden[]
+  Bitacora Bitacora[]
 }
-
 
 model Role {
-id Int @id @default(autoincrement())
-name String @unique // ej: ADMIN, VENDEDOR, CLIENTE
-description String?
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ej: ADMIN, VENDEDOR, CLIENTE
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-
-permissions RolePermission[]
-users UserRole[]
+  permissions RolePermission[]
+  users       UserRole[]
 }
-
 
 model Permission {
-id Int @id @default(autoincrement())
-key String @unique // ej: user.read, user.create, inv.read
-description String?
+  id          Int     @id @default(autoincrement())
+  key         String  @unique // ej: user.read, user.create, inv.read
+  description String?
 
-
-roles RolePermission[]
+  roles RolePermission[]
 }
-
 
 model UserRole {
-userId Int
-roleId Int
-user User @relation(fields: [userId], references: [id])
-role Role @relation(fields: [roleId], references: [id])
+  userId Int
+  roleId Int
+  user   User @relation(fields: [userId], references: [id])
+  role   Role @relation(fields: [roleId], references: [id])
 
-
-@@id([userId, roleId])
+  @@id([userId, roleId])
 }
 
-
 model RolePermission {
-roleId Int
-permissionId Int
-role Role @relation(fields: [roleId], references: [id])
-permission Permission @relation(fields: [permissionId], references: [id])
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
 
-
-@@id([roleId, permissionId])
+  @@id([roleId, permissionId])
 }
 
 model Marca {
-id Int @id @default(autoincrement())
-nombre String @unique
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-productos Producto[]
+  productos Producto[]
 }
 
 model Categoria {
-id Int @id @default(autoincrement())
-nombre String @unique
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-productos Producto[]
+  productos Producto[]
 }
 
 model Unidad {
-id Int @id @default(autoincrement())
-codigo String @unique
-nombre String
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  codigo    String   @unique
+  nombre    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-productos Producto[]
+  productos Producto[]
 }
 
 model Producto {
-id Int @id @default(autoincrement())
-nombre String
-descripcion String?
-precio Decimal @default(0)
-stockMinimo Int @default(0)
-activo Boolean @default(true)
-imageKey String?
-imageUrl String?
-creadoEn DateTime @default(now())
-actualizadoEn DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  descripcion   String?
+  precio        Decimal  @default(0)
+  stockMinimo   Int      @default(0)
+  activo        Boolean  @default(true)
+  imageKey      String?
+  imageUrl      String?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-marcaId Int
-categoriaId Int
-unidadId Int
+  marcaId     Int
+  categoriaId Int
+  unidadId    Int
 
-marca Marca @relation(fields: [marcaId], references: [id])
-categoria Categoria @relation(fields: [categoriaId], references: [id])
-unidad Unidad @relation(fields: [unidadId], references: [id])
-carritoItems CarritoItem[]
-ordenItems OrdenItem[]
+  marca        Marca         @relation(fields: [marcaId], references: [id])
+  categoria    Categoria     @relation(fields: [categoriaId], references: [id])
+  unidad       Unidad        @relation(fields: [unidadId], references: [id])
+  carritoItems CarritoItem[]
+  ordenItems   OrdenItem[]
 }
 
 model Cliente {
-id Int @id @default(autoincrement())
-nombre String
-apellido String?
-nit String? @unique
-telefono String?
-email String?
-direccion String?
-activo Boolean @default(true)
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  apellido  String?
+  nit       String?  @unique
+  telefono  String?
+  email     String?
+  direccion String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CarritoItem {
-id Int @id @default(autoincrement())
-userId Int
-productoId Int
-cantidad Int @default(1)
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  productoId Int
+  cantidad   Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
-@@unique([userId, productoId])
+  @@unique([userId, productoId])
 }
 
 enum EstadoOrden {
-PENDIENTE
-PAGADA
-ENVIADA
-ENTREGADA
-CANCELADA
+  PENDIENTE
+  PAGADA
+  ENVIADA
+  ENTREGADA
+  CANCELADA
 }
 
 model Orden {
-id Int @id @default(autoincrement())
-userId Int
-total Decimal
-estado EstadoOrden @default(PENDIENTE)
-createdAt DateTime @default(now())
-updatedAt DateTime @updatedAt
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  total     Decimal
+  estado    EstadoOrden @default(PENDIENTE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-user User @relation(fields: [userId], references: [id])
-items OrdenItem[]
+  user  User        @relation(fields: [userId], references: [id])
+  items OrdenItem[]
 }
 
 model OrdenItem {
-id Int @id @default(autoincrement())
-ordenId Int
-productoId Int
-cantidad Int
-precioUnitario Decimal
-subtotal Decimal
+  id             Int     @id @default(autoincrement())
+  ordenId        Int
+  productoId     Int
+  cantidad       Int
+  precioUnitario Decimal
+  subtotal       Decimal
 
-orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
-producto Producto @relation(fields: [productoId], references: [id])
+  orden    Orden    @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id])
+}
+
+enum EstadoBitacora {
+  EXITOSO
+  FALLIDO
+}
+
+model Bitacora {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  ip        String
+  acciones  String
+  estado    EstadoBitacora
+  createdAt DateTime       @default(now()) // guarda en UTC
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([estado, createdAt])
+  @@map("bitacora")
 }

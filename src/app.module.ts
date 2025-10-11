@@ -14,6 +14,7 @@ import { UnidadesModule } from './unidades/unidades.module';
 import { ProductosModule } from './productos/productos.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { CarritoModule } from './carrito/carrito.module';
+import { BitacoraModule } from './bitacora/bitacora.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CarritoModule } from './carrito/carrito.module';
     ProductosModule,
     ClientesModule,
     CarritoModule,
+    BitacoraModule,
   ],
   controllers: [MeController],
 })

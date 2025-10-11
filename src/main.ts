@@ -2,11 +2,13 @@ import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { ValidationPipe } from '@nestjs/common'
 import cookieParser from 'cookie-parser' 
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api'); // <--- agrega esta línea
-  app.use(cookieParser())                      
+  app.use(cookieParser())         
+  app.set('trust proxy', 1); // si usas proxy/reverse-proxy             
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
