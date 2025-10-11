@@ -14,6 +14,7 @@ import { UnidadesModule } from './unidades/unidades.module';
 import { ProductosModule } from './productos/productos.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { CarritoModule } from './carrito/carrito.module';
+import { ChatAiModule } from './chat-ai/chat-ai.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 
 @Module({
@@ -31,7 +32,6 @@ import { BitacoraModule } from './bitacora/bitacora.module';
     ProductosModule,
     ClientesModule,
     CarritoModule,
-    BitacoraModule,
   ],
   controllers: [MeController],
 })
