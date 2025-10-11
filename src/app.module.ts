@@ -32,6 +32,8 @@ import { BitacoraModule } from './bitacora/bitacora.module';
     ProductosModule,
     ClientesModule,
     CarritoModule,
+    ChatAiModule,
+    BitacoraModule,
   ],
   controllers: [MeController],
 })
