@@ -19,6 +19,7 @@ email String @unique
 passwordHash String
 firstName String
 lastName String
+telefono String?
 status UserStatus @default(ACTIVE)
 createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt

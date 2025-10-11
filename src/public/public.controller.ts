@@ -26,6 +26,7 @@ export class PublicController {
           email: dto.email,
           firstName: dto.firstName,
           lastName: dto.lastName,
+          telefono: dto.telefono,
           passwordHash,
           roles: {
             create: [{ roleId: cliente.id }], // asigna rol CLIENTE

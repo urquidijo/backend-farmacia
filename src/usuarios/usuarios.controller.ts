@@ -1,6 +1,7 @@
 import { CreateUserDto } from './dto/create-usuario.dto';
 import { UpdateUserDto } from './dto/update-usuario.dto';
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, ParseIntPipe } from '@nestjs/common'
+import { FilterClientesByDateDto } from './dto/filter-clientes-by-date.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, ParseIntPipe, Query } from '@nestjs/common'
 import { UsersService } from './usuarios.service'
 
 import { Permissions } from '../auth/decorators/permissions.decorator'
@@ -30,5 +31,17 @@ export class UsersController {
   @Permissions('user.delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.users.remove(id)
+  }
+
+  @Get('clientes')
+  @Permissions('user.read')
+  findClientes() {
+    return this.users.findClientes()
+  }
+
+  @Get('clientes/by-date-range')
+  @Permissions('user.read')
+  findClientesByDateRange(@Query() dto: FilterClientesByDateDto) {
+    return this.users.findClientesByDateRange(dto)
   }
 }
