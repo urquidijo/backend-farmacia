@@ -1,20 +1,46 @@
-import { Controller, Get, UseGuards } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service'
-import { AuthGuard } from '@nestjs/passport'
-import { PermissionsGuard } from '../auth/guards/permissions.guard'
-import { Permissions } from '../auth/decorators/permissions.decorator'
+// src/roles/roles.controller.ts
+import { Body, Controller, DefaultValuePipe, Delete, Get, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
+import { RolesService } from './roles.service';
+import { CreateRoleDto } from './dto/create-role.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
+import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
 
 @Controller('roles')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
 export class RolesController {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly roles: RolesService) {}
 
   @Get()
-  @Permissions('user.read')
-  findAll() {
-    return this.prisma.role.findMany({
-      select: { id: true, name: true, description: true },
-      orderBy: { name: 'asc' },
-    })
+  findAll(@Query('withPerms', new DefaultValuePipe('false')) withPerms: string) {
+    return this.roles.findAll(withPerms === 'true');
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.roles.findOne(id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateRoleDto) {
+    return this.roles.create(dto);
+  }
+
+  @Put(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleDto) {
+    return this.roles.update(id, dto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.roles.remove(id);
+  }
+
+  @Get(':id/permissions')
+  getPerms(@Param('id', ParseIntPipe) id: number) {
+    return this.roles.getPermissions(id);
+  }
+
+  @Put(':id/permissions')
+  setPerms(@Param('id', ParseIntPipe) id: number, @Body() body: UpdateRolePermissionsDto) {
+    return this.roles.setPermissions(id, body.permissionIds);
   }
 }
