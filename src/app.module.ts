@@ -17,6 +17,7 @@ import { ClientesModule } from './clientes/clientes.module'
 import { CarritoModule } from './carrito/carrito.module'
 import { AlertsModule } from './alerts/alerts.module'
 import { LotesModule } from './lotes/lotes.module'
+import { ChatAiModule } from './chat-ai/chat-ai.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 
 @Module({
@@ -37,6 +38,7 @@ import { BitacoraModule } from './bitacora/bitacora.module';
     CarritoModule,
     AlertsModule,
     LotesModule,
+    ChatAiModule,
     BitacoraModule,
   ],
   controllers: [MeController],
