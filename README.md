@@ -96,3 +96,23 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## CU06 - Cómo probar
+
+1. Configura `.env` con `ALERT_WINDOW_DAYS=30` y las credenciales de base de datos / S3.
+2. Ejecuta migraciones y semillas: `npx prisma migrate dev` y `npx prisma db seed` (opcional `npx ts-node prisma/seed-productos.ts`).
+3. Arranca el backend con `npm run start:dev`.
+4. En el frontend agrega `NEXT_PUBLIC_API_URL=http://localhost:3001/api` y ejecuta `npm run dev`.
+5. Inicia sesión con `admin@farmacia.com / Admin123*` y navega a `/admin/alerts`.
+6. Revisa la campana del header, el toast de alertas críticas y el panel para filtrar o marcar alertas.
+
+### Datos demo incluidos
+- `Analgesico Demo A`: stock 5 / mínimo 10 (alerta de stock).
+- `Suplemento Demo B`: lote `LOTE-DEMO-001` vence en 10 días (alerta de vencimiento).
+- `Vitaminas Demo C`: sin alertas.
+
+### Endpoints clave
+- `GET /alerts`, `GET /alerts?type=stock|expiry` (paginadas, filtros, `unreadOnly`).
+- `PATCH /alerts/:id/read` y `PATCH /alerts/read-all` (requiere `alert.manage`).
+- `GET /alerts/stream` (SSE con credenciales) para actualizaciones en tiempo casi real.
+- `GET /productos/:id/lotes`, `POST /productos/:id/lotes`, `PATCH /lotes/:id`, `DELETE /lotes/:id` (requiere `inv.read` / `inv.move`).
+- Para simular ventas, agrega productos al carrito y ejecuta el checkout; el servicio restará stock y el stream de alertas notificará el cambio.
