@@ -42,7 +42,7 @@ export class PagosController {
   }
 
   /**
-   * 🧾 Listar facturas (admin)
+   * 🧾 Listar facturas
    */
   @Get('facturas')
   async listarFacturas() {
