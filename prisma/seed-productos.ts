@@ -81,6 +81,7 @@ async function main() {
       nombre: "Paracetamol 500mg x10",
       descripcion: "Analgésico y antipirético para el alivio del dolor y la fiebre",
       stockMinimo: 20,
+      stockActual: 12,
       marcaId: marcas[0].id, // Genfar
       categoriaId: categorias[0].id, // Analgésicos
       unidadId: unidades[0].id, // Comprimidos
@@ -89,6 +90,7 @@ async function main() {
       nombre: "Ibuprofeno 400mg x10",
       descripcion: "Antiinflamatorio no esteroideo para dolor e inflamación",
       stockMinimo: 15,
+      stockActual: 18,
       marcaId: marcas[1].id, // Bagó
       categoriaId: categorias[0].id, // Analgésicos
       unidadId: unidades[0].id, // Comprimidos
@@ -97,6 +99,7 @@ async function main() {
       nombre: "Protector Solar FPS50 50ml",
       descripcion: "Protección solar de amplio espectro, resistente al agua",
       stockMinimo: 10,
+      stockActual: 25,
       marcaId: marcas[2].id, // Isdin
       categoriaId: categorias[1].id, // Dermocosmética
       unidadId: unidades[1].id, // Mililitros
@@ -105,6 +108,7 @@ async function main() {
       nombre: "Pañales M x36",
       descripcion: "Pañales ultra absorbentes para bebés de 6-10kg",
       stockMinimo: 5,
+      stockActual: 8,
       marcaId: marcas[3].id, // Huggies
       categoriaId: categorias[2].id, // Bebés
       unidadId: unidades[2].id, // Unidades
@@ -113,6 +117,7 @@ async function main() {
       nombre: "Crema Hidratante Facial 50ml",
       descripcion: "Crema hidratante para rostro con ácido hialurónico",
       stockMinimo: 8,
+      stockActual: 16,
       marcaId: marcas[2].id, // Isdin
       categoriaId: categorias[1].id, // Dermocosmética
       unidadId: unidades[1].id, // Mililitros
@@ -121,6 +126,7 @@ async function main() {
       nombre: "Vitamina C 1000mg x30",
       descripcion: "Suplemento de vitamina C para fortalecer el sistema inmune",
       stockMinimo: 12,
+      stockActual: 22,
       marcaId: marcas[0].id, // Genfar
       categoriaId: categorias[3].id, // Vitaminas
       unidadId: unidades[0].id, // Comprimidos
