@@ -167,7 +167,10 @@ model Orden {
 
   user  User        @relation(fields: [userId], references: [id])
   items OrdenItem[]
+  pago  Pago?       @relation(name: "OrdenPago")
 }
+
+
 
 model OrdenItem {
   id             Int     @id @default(autoincrement())
@@ -252,3 +255,17 @@ model Bitacora {
   @@index([estado, createdAt])
   @@map("bitacora")
 }
+
+
+model Pago {
+  id          Int      @id @default(autoincrement())
+  ordenId     Int      @unique
+  orden       Orden    @relation(name: "OrdenPago", fields: [ordenId], references: [id])
+  stripeId    String   @unique
+  monto       Float
+  estado      String
+  metodo      String?
+  facturaUrl  String?
+  createdAt   DateTime @default(now())
+}
+

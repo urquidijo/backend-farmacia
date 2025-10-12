@@ -20,6 +20,7 @@ import { LotesModule } from './lotes/lotes.module'
 import { ChatAiModule } from './chat-ai/chat-ai.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { PermissionsModule } from './permissions/permissions.module'
+import { PagosModule } from './pagos/pagos.module'
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PermissionsModule } from './permissions/permissions.module'
     ChatAiModule,
     BitacoraModule,
     PermissionsModule,
+    PagosModule,
   ],
   controllers: [MeController],
 })
