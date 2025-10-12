@@ -102,6 +102,8 @@ model Producto {
   descripcion   String?
   precio        Decimal  @default(0)
   stockMinimo   Int      @default(0)
+  stockActual   Int      @default(50) 
+  //Lotes       int       
   activo        Boolean  @default(true)
   imageKey      String?
   imageUrl      String?
