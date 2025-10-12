@@ -219,6 +219,47 @@ async function main() {
     });
   }
 
+  // Crear lotes para los productos que aún no tienen
+  const productos = await prisma.producto.findMany({
+    select: {
+      id: true,
+      stockActual: true,
+      stockMinimo: true,
+    },
+  });
+
+  for (const producto of productos) {
+    const lotesCount = await prisma.lote.count({
+      where: { productoId: producto.id },
+    });
+
+    if (lotesCount === 0) {
+      const baseCantidad =
+        producto.stockActual > 0
+          ? producto.stockActual
+          : Math.max(producto.stockMinimo ?? 0, 10);
+
+      if (baseCantidad > 0) {
+        await prisma.lote.create({
+          data: {
+            productoId: producto.id,
+            codigo: `SEED-${producto.id}`,
+            cantidad: baseCantidad,
+            fechaVenc: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+          },
+        });
+      }
+    }
+  }
+
+  await prisma.$executeRaw`
+    UPDATE "Producto" p
+    SET "stockActual" = COALESCE(
+      (SELECT SUM(l."cantidad") FROM "Lote" l WHERE l."productoId" = p.id),
+      0
+    )
+  `;
+
   await prisma.alert.deleteMany();
 
   await prisma.alert.createMany({
