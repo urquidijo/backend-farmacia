@@ -42,8 +42,8 @@ export class PagosService {
           },
           quantity: i.cantidad,
         })),
-        success_url: 'http://localhost:3000/facturas?success=true',
-        cancel_url: 'http://localhost:3000/carrito?canceled=true',
+     success_url: process.env.SUCCESS_URL,
+cancel_url: process.env.CANCEL_URL,
         invoice_creation: { enabled: true }, // ⚡ CREA FACTURA AUTOMÁTICA AL PAGAR
       })
 
