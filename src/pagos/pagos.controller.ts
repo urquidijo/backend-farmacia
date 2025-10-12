@@ -34,7 +34,7 @@ export class PagosController {
   }
 
   /**
-   * 🧾 Obtener factura por ID
+   * 🧾 Obtener factura por
    */
   @Get('factura/:id')
   async obtenerFactura(@Param('id') id: string) {
