@@ -26,9 +26,10 @@ export class CarritoService {
             nombre: true,
             precio: true,
             imageUrl: true,
+            stockActual: true,
             marca: {
-              select: { nombre: true }
-            }
+              select: { nombre: true },
+            },
           }
         },
       },
@@ -41,6 +42,7 @@ export class CarritoService {
       producto: {
         ...item.producto,
         precio: item.producto.precio.toNumber(),
+        stockActual: item.producto.stockActual ?? 0,
       },
     }))
   }
@@ -128,7 +130,8 @@ export class CarritoService {
             nombre: true,
             precio: true,
             imageUrl: true,
-            marca: { select: { nombre: true } }
+            stockActual: true,
+            marca: { select: { nombre: true } },
           }
         },
       },
@@ -139,6 +142,7 @@ export class CarritoService {
       producto: {
         ...newItem.producto,
         precio: newItem.producto.precio.toNumber(),
+        stockActual: newItem.producto.stockActual ?? 0,
       },
     }
   }
@@ -172,7 +176,8 @@ export class CarritoService {
             nombre: true,
             precio: true,
             imageUrl: true,
-            marca: { select: { nombre: true } }
+            stockActual: true,
+            marca: { select: { nombre: true } },
           }
         },
       },
@@ -183,6 +188,7 @@ export class CarritoService {
       producto: {
         ...updated.producto,
         precio: updated.producto.precio.toNumber(),
+        stockActual: updated.producto.stockActual ?? 0,
       },
     }
   }

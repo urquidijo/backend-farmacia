@@ -112,10 +112,31 @@ export class ProductosService {
 
   async remove(id: number) {
     try {
-      return await this.prisma.producto.delete({
-        where: { id },
+      return await this.prisma.$transaction(async (tx) => {
+        const lotes = await tx.lote.findMany({
+          where: { productoId: id },
+          select: { id: true },
+        })
+        const loteIds = lotes.map((l) => l.id)
+
+        if (loteIds.length) {
+          await tx.alert.deleteMany({
+            where: {
+              OR: [{ productoId: id }, { loteId: { in: loteIds } }],
+            },
+          })
+        } else {
+          await tx.alert.deleteMany({ where: { productoId: id } })
+        }
+
+        await tx.ordenItem.deleteMany({ where: { productoId: id } })
+        await tx.carritoItem.deleteMany({ where: { productoId: id } })
+
+        return tx.producto.delete({
+          where: { id },
+        })
       })
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'P2025') {
         throw new NotFoundException(`Producto con ID ${id} no encontrado`)
       }
