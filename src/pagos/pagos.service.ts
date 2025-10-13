@@ -28,7 +28,7 @@ export class PagosService {
 
       const session = await this.stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
+        payment_method_types: ['card','cashapp'],
         customer_email: orden.user.email,
         metadata: {
           ordenId: orden.id.toString(),
