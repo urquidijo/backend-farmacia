@@ -21,6 +21,7 @@ import { ChatAiModule } from './chat-ai/chat-ai.module';
 import { BitacoraModule } from './bitacora/bitacora.module';
 import { PermissionsModule } from './permissions/permissions.module'
 import { PagosModule } from './pagos/pagos.module'
+import { BackupModule } from './backup/backup.module'
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { PagosModule } from './pagos/pagos.module'
     BitacoraModule,
     PermissionsModule,
     PagosModule,
+    BackupModule,
   ],
   controllers: [MeController],
 })
