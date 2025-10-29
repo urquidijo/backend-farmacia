@@ -1,4 +1,3 @@
-// src/backup/backup.controller.ts
 import {
   Controller,
   Get,
@@ -9,9 +8,10 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
-import type { Response, Express } from 'express'; // 👈 importa Express para el tipo Multer.File
+import type { Response, Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BackupService } from './backup.service';
+import { pipeline } from 'node:stream/promises';
 
 @Controller('backup')
 export class BackupController {
@@ -23,25 +23,22 @@ export class BackupController {
     @Query('format') format: 'sql' | 'dump' = 'sql',
     @Res() res: Response,
   ) {
-    const { stream, filename, contentType } = await this.svc.export(format);
+    try {
+      const { stream, filename, contentType } = await this.svc.export(format);
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.flushHeaders?.(); // opcional
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.flushHeaders?.();
 
-    // Manejo de errores del stream: si hay error, responde 500 y cierra
-    stream.on('error', (err: any) => {
+      // pipeline maneja backpressure y errores del stream de extremo a extremo
+      await pipeline(stream, res);
+    } catch (err: any) {
       if (!res.headersSent) {
-        res.status(500).send(
-          typeof err?.message === 'string' ? err.message : 'Error generando backup',
-        );
+        res.status(500).send(typeof err?.message === 'string' ? err.message : 'Error generando backup');
       } else {
-        res.end(); // por si ya se enviaban datos
+        res.end();
       }
-    });
-
-    // Pipe del stream al response
-    stream.pipe(res);
+    }
   }
 
   // POST /backup/restore (multipart form-data: file)
@@ -50,9 +47,8 @@ export class BackupController {
     FileInterceptor('file', { limits: { fileSize: 1024 * 1024 * 1024 } }), // 1GB
   )
   async restore(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('Sube un archivo .sql o .dump');
-    }
+    if (!file) throw new BadRequestException('Sube un archivo .sql o .dump');
+
     const name = (file.originalname || '').toLowerCase();
     const isDump =
       name.endsWith('.dump') || name.endsWith('.dump.gz') || name.endsWith('.custom');

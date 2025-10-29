@@ -13,9 +13,9 @@ function mustEnv(name: string) {
 
 @Injectable()
 export class BackupService {
-  // Retorna la URL de conexión completa con sslmode=require
+  // Permite override para backups sin PgBouncer (BACKUP_DATABASE_URL)
   private dbUrl(): string {
-    const raw = mustEnv('DATABASE_URL');
+    const raw = process.env.BACKUP_DATABASE_URL || mustEnv('DATABASE_URL');
     if (!/sslmode=/.test(raw)) {
       const hasQ = raw.includes('?');
       return raw + (hasQ ? '&' : '?') + 'sslmode=require';
@@ -34,19 +34,22 @@ export class BackupService {
       const proc = spawn('pg_dump', args, { env: process.env });
 
       const errs: Buffer[] = [];
+      proc.on('error', (e) => {
+        // ENOENT si no existe pg_dump u otro error de spawn
+        proc.stdout?.destroy(e as any);
+      });
       proc.stderr.on('data', (c) => errs.push(Buffer.from(c)));
-
-      // Captura errores reales de pg_dump
       proc.on('close', (code) => {
         if (code && code !== 0) {
-          throw new InternalServerErrorException(
+          const err = new InternalServerErrorException(
             `pg_dump falló: ${Buffer.concat(errs).toString() || 'error desconocido'}`,
           );
+          proc.stdout?.destroy(err as any);
         }
       });
 
       return {
-        stream: proc.stdout,
+        stream: proc.stdout as Readable,
         filename: `backup-${ts}.dump`,
         contentType: 'application/octet-stream',
       };
@@ -58,14 +61,14 @@ export class BackupService {
     const gzip = zlib.createGzip();
 
     const errs: Buffer[] = [];
+    proc.on('error', (e) => gzip.destroy(e as any));
     proc.stderr.on('data', (c) => errs.push(Buffer.from(c)));
-
     proc.on('close', (code) => {
       if (code && code !== 0) {
         gzip.destroy(
           new InternalServerErrorException(
             `pg_dump falló: ${Buffer.concat(errs).toString() || 'error desconocido'}`,
-          ),
+          ) as any,
         );
       }
     });
@@ -73,7 +76,7 @@ export class BackupService {
     proc.stdout.pipe(gzip);
 
     return {
-      stream: gzip,
+      stream: gzip as Readable,
       filename: `backup-${ts}.sql.gz`,
       contentType: 'application/gzip',
     };
@@ -85,16 +88,16 @@ export class BackupService {
 
     if (opts.isDump) {
       // --- Restaurar desde .dump usando pg_restore
-      const proc = spawn(
-        'pg_restore',
-        ['--dbname', db, '-c'], // -c = limpia objetos antes de restaurar
-        { env: process.env },
-      );
+      const proc = spawn('pg_restore', ['--dbname', db, '-c'], { env: process.env });
+
+      const errs: Buffer[] = [];
+      proc.on('error', (e) => proc.stdin?.destroy(e as any));
+      proc.stderr.on('data', (c) => errs.push(Buffer.from(c)));
 
       proc.stdin.write(buffer);
       proc.stdin.end();
 
-      await this.awaitExit(proc, 'pg_restore');
+      await this.awaitExit(proc, 'pg_restore', errs);
       return { ok: true, restoredFrom: opts.filename, format: 'dump' };
     }
 
@@ -107,23 +110,27 @@ export class BackupService {
       sqlStream = Readable.from(buffer);
     }
 
-    const proc = spawn(
-      'psql',
-      ['--dbname', db, '-v', 'ON_ERROR_STOP=1', '-f', '-'],
-      { env: process.env },
-    );
+    const proc = spawn('psql', ['--dbname', db, '-v', 'ON_ERROR_STOP=1', '-f', '-'], {
+      env: process.env,
+    });
+
+    const errs: Buffer[] = [];
+    proc.on('error', (e) => proc.stdin?.destroy(e as any));
+    proc.stderr.on('data', (c) => errs.push(Buffer.from(c)));
 
     sqlStream.pipe(proc.stdin);
-    await this.awaitExit(proc, 'psql');
+    await this.awaitExit(proc, 'psql', errs);
 
     return { ok: true, restoredFrom: opts.filename, format: 'sql' };
   }
 
   /** =============== Utilidades =============== */
-  private awaitExit(proc: ReturnType<typeof spawn>, name: string) {
+  private awaitExit(
+    proc: ReturnType<typeof spawn>,
+    name: string,
+    errs: Buffer[] = [],
+  ) {
     return new Promise<void>((resolve, reject) => {
-      const errs: Buffer[] = [];
-      proc.stderr!.on('data', (c) => errs.push(Buffer.from(c)));
       proc.on('close', (code) => {
         if (code && code !== 0) {
           return reject(
