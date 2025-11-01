@@ -12,14 +12,13 @@ export class ProductosService {
     await this.validateRelations(createProductoDto.marcaId, createProductoDto.categoriaId, createProductoDto.unidadId)
 
     return this.prisma.producto.create({
-      data: createProductoDto,
-      include: {
-        marca: true,
-        categoria: true,
-        unidad: true,
-      },
-    })
-  }
+    data: {
+      ...createProductoDto,
+      requiereReceta: createProductoDto.requiereReceta ?? false, // <- importante
+    },
+    include: { marca: true, categoria: true, unidad: true },
+  })
+}
 
   async findAll(q?: string, page: number = 1, size: number = 10) {
     const where = q
@@ -99,16 +98,14 @@ export class ProductosService {
       )
     }
 
-    return this.prisma.producto.update({
-      where: { id },
-      data: updateProductoDto,
-      include: {
-        marca: true,
-        categoria: true,
-        unidad: true,
-      },
-    })
-  }
+     return this.prisma.producto.update({
+    where: { id },
+    data: {
+      ...updateProductoDto, // incluye requiereReceta si vino en el body
+    },
+    include: { marca: true, categoria: true, unidad: true },
+  })
+}
 
   async remove(id: number) {
     try {
