@@ -22,6 +22,8 @@ import { BitacoraModule } from './bitacora/bitacora.module';
 import { PermissionsModule } from './permissions/permissions.module'
 import { PagosModule } from './pagos/pagos.module'
 import { BackupModule } from './backup/backup.module'
+import { verify } from 'crypto'
+import { RxVerifyModule } from './rx-verify/rx-verify.module'
 
 @Module({
   imports: [
@@ -46,6 +48,7 @@ import { BackupModule } from './backup/backup.module'
     PermissionsModule,
     PagosModule,
     BackupModule,
+    RxVerifyModule,
   ],
   controllers: [MeController],
 })

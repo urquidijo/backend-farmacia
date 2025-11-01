@@ -2,18 +2,20 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common'
-import { Prisma } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
-import { AddToCarritoDto } from './dto/add-to-carrito.dto'
-import { UpdateCarritoItemDto } from './dto/update-carrito-item.dto'
-import { AlertsService } from '../alerts/alerts.service'
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AddToCarritoDto } from './dto/add-to-carrito.dto';
+import { UpdateCarritoItemDto } from './dto/update-carrito-item.dto';
+import { AlertsService } from '../alerts/alerts.service';
+import { RxVerifyService } from '../rx-verify/rx-verify.service'; // ✅
 
 @Injectable()
 export class CarritoService {
   constructor(
     private prisma: PrismaService,
     private readonly alertsService: AlertsService,
+    private readonly rx: RxVerifyService, // ✅
   ) {}
 
   async getCarrito(userId: number) {
@@ -27,52 +29,50 @@ export class CarritoService {
             precio: true,
             imageUrl: true,
             stockActual: true,
-            marca: {
-              select: { nombre: true },
-            },
-          }
+            requiereReceta: true, // ✅
+            marca: { select: { nombre: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
-    })
+    });
 
-    // Convertir precios a número
-    return items.map(item => ({
+    return items.map((item) => ({
       ...item,
       producto: {
         ...item.producto,
         precio: item.producto.precio.toNumber(),
         stockActual: item.producto.stockActual ?? 0,
       },
-    }))
+    }));
   }
 
   async addToCarrito(userId: number, dto: AddToCarritoDto) {
-    // Verificar que el producto existe y está activo
     const producto = await this.prisma.producto.findUnique({
       where: { id: dto.productoId },
-    })
+    });
 
     if (!producto) {
-      throw new NotFoundException(`Producto con ID ${dto.productoId} no encontrado`)
+      throw new NotFoundException(
+        `Producto con ID ${dto.productoId} no encontrado`,
+      );
     }
 
     if (!producto.activo) {
-      throw new BadRequestException('El producto no está disponible')
+      throw new BadRequestException('El producto no está disponible');
     }
 
-    const disponible = await this.getProductoStock(producto.id)
+    const disponible = await this.getProductoStock(producto.id);
     if (disponible <= 0) {
-      throw new BadRequestException('Sin stock disponible para este producto')
+      throw new BadRequestException('Sin stock disponible para este producto');
     }
 
     if (dto.cantidad > disponible) {
       throw new BadRequestException(
         `Solo hay ${disponible} unidades disponibles`,
-      )
+      );
     }
 
-    // Verificar si ya existe en el carrito
     const existingItem = await this.prisma.carritoItem.findUnique({
       where: {
         userId_productoId: {
@@ -80,17 +80,16 @@ export class CarritoService {
           productoId: dto.productoId,
         },
       },
-    })
+    });
 
     if (existingItem) {
-      const nuevaCantidad = existingItem.cantidad + dto.cantidad
+      const nuevaCantidad = existingItem.cantidad + dto.cantidad;
       if (nuevaCantidad > disponible) {
         throw new BadRequestException(
           `Solo hay ${disponible} unidades disponibles`,
-        )
+        );
       }
 
-      // Actualizar cantidad
       const updated = await this.prisma.carritoItem.update({
         where: { id: existingItem.id },
         data: { cantidad: nuevaCantidad },
@@ -101,11 +100,12 @@ export class CarritoService {
               nombre: true,
               precio: true,
               imageUrl: true,
-              marca: { select: { nombre: true } }
-            }
+              requiereReceta: true, // ✅ para que el front lo vea si refresca
+              marca: { select: { nombre: true } },
+            },
           },
         },
-      })
+      });
 
       return {
         ...updated,
@@ -113,10 +113,9 @@ export class CarritoService {
           ...updated.producto,
           precio: updated.producto.precio.toNumber(),
         },
-      }
+      };
     }
 
-    // Crear nuevo item
     const newItem = await this.prisma.carritoItem.create({
       data: {
         userId,
@@ -131,11 +130,12 @@ export class CarritoService {
             precio: true,
             imageUrl: true,
             stockActual: true,
+            requiereReceta: true, // ✅
             marca: { select: { nombre: true } },
-          }
+          },
         },
       },
-    })
+    });
 
     return {
       ...newItem,
@@ -144,7 +144,7 @@ export class CarritoService {
         precio: newItem.producto.precio.toNumber(),
         stockActual: newItem.producto.stockActual ?? 0,
       },
-    }
+    };
   }
 
   async updateItem(userId: number, itemId: number, dto: UpdateCarritoItemDto) {
@@ -153,17 +153,17 @@ export class CarritoService {
         id: itemId,
         userId,
       },
-    })
+    });
 
     if (!item) {
-      throw new NotFoundException('Item no encontrado en el carrito')
+      throw new NotFoundException('Item no encontrado en el carrito');
     }
 
-    const disponible = await this.getProductoStock(item.productoId)
+    const disponible = await this.getProductoStock(item.productoId);
     if (dto.cantidad > disponible) {
       throw new BadRequestException(
         `Solo hay ${disponible} unidades disponibles`,
-      )
+      );
     }
 
     const updated = await this.prisma.carritoItem.update({
@@ -177,11 +177,12 @@ export class CarritoService {
             precio: true,
             imageUrl: true,
             stockActual: true,
+            requiereReceta: true, // ✅
             marca: { select: { nombre: true } },
-          }
+          },
         },
       },
-    })
+    });
 
     return {
       ...updated,
@@ -190,7 +191,7 @@ export class CarritoService {
         precio: updated.producto.precio.toNumber(),
         stockActual: updated.producto.stockActual ?? 0,
       },
-    }
+    };
   }
 
   async removeItem(userId: number, itemId: number) {
@@ -199,62 +200,70 @@ export class CarritoService {
         id: itemId,
         userId,
       },
-    })
+    });
 
     if (!item) {
-      throw new NotFoundException('Item no encontrado en el carrito')
+      throw new NotFoundException('Item no encontrado en el carrito');
     }
 
     await this.prisma.carritoItem.delete({
       where: { id: itemId },
-    })
+    });
 
-    return { message: 'Item eliminado del carrito' }
+    return { message: 'Item eliminado del carrito' };
   }
 
   async clearCarrito(userId: number) {
     await this.prisma.carritoItem.deleteMany({
       where: { userId },
-    })
+    });
 
-    return { message: 'Carrito vaciado' }
+    return { message: 'Carrito vaciado' };
   }
 
-  async createOrden(userId: number) {
+  /**
+   * Crea la orden. Si hay productos que requieren receta, exige verificationId aprobado
+   * emitido por RxVerifyService.verifyPrescription() (vía /rx/verify).
+   */
+  async createOrden(userId: number, verificationId?: string) { // ✅ acepta verificationId
     const items = await this.prisma.carritoItem.findMany({
       where: { userId },
-      include: {
-        producto: true,
-      },
-    })
+      include: { producto: true }, // incluye requiereReceta
+    });
 
     if (items.length === 0) {
-      throw new BadRequestException('El carrito está vacío')
+      throw new BadRequestException('El carrito está vacío');
     }
 
-    let total = 0
+    // ✅ si hay RX en el carrito, exige ticket aprobado
+    const needsRx = items.some((i) => i.producto.requiereReceta === true);
+    if (needsRx) {
+      this.rx.requireApproved(userId, verificationId); // lanza si falta/rechazado/expirado
+    }
+
+    let total = 0;
     for (const item of items) {
-      total += item.producto.precio.toNumber() * item.cantidad
+      total += item.producto.precio.toNumber() * item.cantidad;
     }
 
-    const orden = await this.prisma.$transaction(async tx => {
+    const orden = await this.prisma.$transaction(async (tx) => {
       const productos = await tx.producto.findMany({
-        where: { id: { in: items.map(item => item.productoId) } },
+        where: { id: { in: items.map((item) => item.productoId) } },
         select: { id: true, nombre: true, stockActual: true },
-      })
-      const productoMap = new Map(productos.map(p => [p.id, p]))
+      });
+      const productoMap = new Map(productos.map((p) => [p.id, p]));
 
       for (const item of items) {
-        const producto = productoMap.get(item.productoId)
+        const producto = productoMap.get(item.productoId);
         if (!producto) {
           throw new NotFoundException(
             `Producto ${item.productoId} no encontrado`,
-          )
+          );
         }
         if (producto.stockActual < item.cantidad) {
           throw new BadRequestException(
             `Stock insuficiente para ${producto.nombre}: disponible ${producto.stockActual}`,
-          )
+          );
         }
       }
 
@@ -263,7 +272,7 @@ export class CarritoService {
           userId,
           total,
           items: {
-            create: items.map(item => ({
+            create: items.map((item) => ({
               productoId: item.productoId,
               cantidad: item.cantidad,
               precioUnitario: item.producto.precio,
@@ -278,31 +287,32 @@ export class CarritoService {
             },
           },
         },
-      })
+      });
 
       for (const item of items) {
-        const producto = productoMap.get(item.productoId)!
+        const producto = productoMap.get(item.productoId)!;
         await this.consumeFromLots(
           tx,
           producto.id,
           item.cantidad,
           producto.nombre,
-        )
+        );
       }
 
-      await tx.carritoItem.deleteMany({ where: { userId } })
+      await tx.carritoItem.deleteMany({ where: { userId } });
 
-      return created
-    })
+      return created;
+    });
 
+    // Recalcular alertas (no bloqueante)
     this.alertsService
       .syncAllAlerts({ source: 'inventory' })
-      .catch(err => console.error('No se pudieron recalcular alertas', err))
+      .catch((err) => console.error('No se pudieron recalcular alertas', err));
 
     return {
       ...orden,
       total: orden.total.toNumber(),
-      items: orden.items.map(item => ({
+      items: orden.items.map((item) => ({
         ...item,
         precioUnitario: item.precioUnitario.toNumber(),
         subtotal: item.subtotal.toNumber(),
@@ -311,15 +321,15 @@ export class CarritoService {
           precio: item.producto.precio.toNumber(),
         },
       })),
-    }
+    };
   }
 
   private async getProductoStock(productoId: number) {
     const result = await this.prisma.lote.aggregate({
       where: { productoId },
       _sum: { cantidad: true },
-    })
-    return result._sum.cantidad ?? 0
+    });
+    return result._sum.cantidad ?? 0;
   }
 
   private async consumeFromLots(
@@ -328,31 +338,31 @@ export class CarritoService {
     cantidad: number,
     nombreProducto: string,
   ) {
-    let restante = cantidad
+    let restante = cantidad;
     const lotes = await tx.lote.findMany({
       where: { productoId },
       orderBy: { fechaVenc: 'asc' },
-    })
+    });
 
     for (const lote of lotes) {
-      if (restante <= 0) break
-      if (lote.cantidad <= 0) continue
+      if (restante <= 0) break;
+      if (lote.cantidad <= 0) continue;
 
-      const descontar = Math.min(lote.cantidad, restante)
+      const descontar = Math.min(lote.cantidad, restante);
       await tx.lote.update({
         where: { id: lote.id },
         data: { cantidad: lote.cantidad - descontar },
-      })
-      restante -= descontar
+      });
+      restante -= descontar;
     }
 
     if (restante > 0) {
       throw new BadRequestException(
         `Stock insuficiente para ${nombreProducto}: faltan ${restante} unidades`,
-      )
+      );
     }
 
-    await this.recalculateProductoStock(tx, productoId)
+    await this.recalculateProductoStock(tx, productoId);
   }
 
   private async recalculateProductoStock(
@@ -362,12 +372,11 @@ export class CarritoService {
     const result = await tx.lote.aggregate({
       where: { productoId },
       _sum: { cantidad: true },
-    })
-    const total = result._sum.cantidad ?? 0
+    });
+    const total = result._sum.cantidad ?? 0;
     await tx.producto.update({
       where: { id: productoId },
       data: { stockActual: total },
-    })
+    });
   }
 }
-
