@@ -46,4 +46,9 @@ export class CreateProductoDto {
   @IsOptional()
   @IsString()
   imageUrl?: string
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  requiereReceta?: boolean // si no viene, queda en false por default
 }

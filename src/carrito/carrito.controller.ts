@@ -9,11 +9,11 @@ import {
   ParseIntPipe,
   UseGuards,
   Request,
-} from '@nestjs/common'
-import { AuthGuard } from '@nestjs/passport'
-import { CarritoService } from './carrito.service'
-import { AddToCarritoDto } from './dto/add-to-carrito.dto'
-import { UpdateCarritoItemDto } from './dto/update-carrito-item.dto'
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { CarritoService } from './carrito.service';
+import { AddToCarritoDto } from './dto/add-to-carrito.dto';
+import { UpdateCarritoItemDto } from './dto/update-carrito-item.dto';
 
 @Controller('carrito')
 @UseGuards(AuthGuard('jwt'))
@@ -22,12 +22,12 @@ export class CarritoController {
 
   @Get()
   getCarrito(@Request() req) {
-    return this.carritoService.getCarrito(req.user.id)
+    return this.carritoService.getCarrito(req.user.id);
   }
 
   @Post()
   addToCarrito(@Request() req, @Body() dto: AddToCarritoDto) {
-    return this.carritoService.addToCarrito(req.user.id, dto)
+    return this.carritoService.addToCarrito(req.user.id, dto);
   }
 
   @Patch(':id')
@@ -36,21 +36,22 @@ export class CarritoController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCarritoItemDto,
   ) {
-    return this.carritoService.updateItem(req.user.id, id, dto)
+    return this.carritoService.updateItem(req.user.id, id, dto);
   }
 
   @Delete(':id')
   removeItem(@Request() req, @Param('id', ParseIntPipe) id: number) {
-    return this.carritoService.removeItem(req.user.id, id)
+    return this.carritoService.removeItem(req.user.id, id);
   }
 
   @Delete()
   clearCarrito(@Request() req) {
-    return this.carritoService.clearCarrito(req.user.id)
+    return this.carritoService.clearCarrito(req.user.id);
   }
 
   @Post('checkout')
-  createOrden(@Request() req) {
-    return this.carritoService.createOrden(req.user.id)
+  createOrden(@Request() req, @Body() body: { verificationId?: string }) {
+    // ✅
+    return this.carritoService.createOrden(req.user.id, body?.verificationId); // ✅
   }
 }
