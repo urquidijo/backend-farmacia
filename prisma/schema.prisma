@@ -27,8 +27,30 @@ model User {
   roles        UserRole[]
   carritoItems CarritoItem[]
   ordenes      Orden[]
+  deviceTokens DeviceToken[]
 
   Bitacora Bitacora[]
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB
+}
+
+model DeviceToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  platform  Platform
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([active])
 }
 
 model Role {
