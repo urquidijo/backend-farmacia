@@ -24,6 +24,7 @@ import { PagosModule } from './pagos/pagos.module'
 import { BackupModule } from './backup/backup.module'
 import { verify } from 'crypto'
 import { RxVerifyModule } from './rx-verify/rx-verify.module'
+import { RecsModule } from './recs/recs.module'
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { RxVerifyModule } from './rx-verify/rx-verify.module'
     PagosModule,
     BackupModule,
     RxVerifyModule,
+    RecsModule,
   ],
   controllers: [MeController],
 })
