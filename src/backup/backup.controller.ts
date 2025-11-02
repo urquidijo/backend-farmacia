@@ -32,18 +32,35 @@ export class BackupController {
     try {
       const { stream, filename, contentType } = await this.svc.export(format);
 
+      // 🔧 Headers correctos y preventivos para proxies (Railway, Vercel)
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      // Evita buffering en proxies como Nginx/Cloudflare
-      res.setHeader('X-Accel-Buffering', 'no');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('X-Accel-Buffering', 'no'); // evita buffering intermedio
       res.flushHeaders?.();
 
+      // ⚡ Manejo de errores en el stream
+      stream.on('error', (err) => {
+        console.error('❌ Error en stream de backup:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Error generando backup');
+        } else {
+          res.end();
+        }
+      });
+
+      // 🚀 Enviar el stream directamente al cliente
       await pipeline(stream, res);
+
+      // 🚨 Asegura cierre del response (Railway puede mantenerlo abierto si no se cierra)
+      res.end();
     } catch (err: any) {
+      console.error('❌ Error en export:', err);
       if (!res.headersSent) {
-        res
-          .status(500)
-          .send(typeof err?.message === 'string' ? err.message : 'Error generando backup');
+        res.status(500).send(
+          typeof err?.message === 'string' ? err.message : 'Error generando backup',
+        );
       } else {
         res.end();
       }
@@ -54,12 +71,12 @@ export class BackupController {
   @Post('restore')
   @UseInterceptors(
     FileInterceptor('file', {
-      // Multer en memoria (por defecto con FileInterceptor)
       limits: { fileSize: 1024 * 1024 * 1024 }, // 1GB
     }),
   )
   async restore(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('Sube un archivo .sql, .sql.gz, .dump o .dump.gz');
+    if (!file)
+      throw new BadRequestException('Sube un archivo .sql, .sql.gz, .dump o .dump.gz');
 
     const name = (file.originalname || '').toLowerCase();
     const valid =
@@ -70,10 +87,11 @@ export class BackupController {
       name.endsWith('.custom');
 
     if (!valid) {
-      throw new BadRequestException('Extensiones válidas: .sql, .sql.gz, .dump, .dump.gz, .custom');
+      throw new BadRequestException(
+        'Extensiones válidas: .sql, .sql.gz, .dump, .dump.gz, .custom',
+      );
     }
 
-    // El servicio detecta internamente si es dump o sql (comprimido o no)
     return this.svc.restore(file.buffer, { filename: name });
   }
 }
