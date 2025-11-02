@@ -112,30 +112,30 @@ export class RecsService {
       const rows = await this.prisma.$queryRaw<
         { productoId: number; ventas: number; marcaId: number }[]
       >(Prisma.sql`
-      SELECT p.id AS "productoId",
-             COALESCE(SUM(oi."cantidad"), 0) AS ventas,
-             p."marcaId" AS "marcaId"
-      FROM "Producto" p
-      LEFT JOIN "OrdenItem" oi ON oi."productoId" = p.id
-      LEFT JOIN "Orden" o ON o.id = oi."ordenId"
-      LEFT JOIN "Pago" pg ON pg."ordenId" = o.id
-      WHERE p."categoriaId" = ${catId}
-        AND p."activo" = true
-        AND p."stockActual" > 0
-        AND (
-          oi.id IS NULL
-          OR (
-            (
-              o."estado" = ANY(ARRAY['PAGADA'::"EstadoOrden",'ENVIADA'::"EstadoOrden",'ENTREGADA'::"EstadoOrden"])
-              OR pg.id IS NOT NULL
+        SELECT p.id AS "productoId",
+               COALESCE(SUM(oi."cantidad"), 0) AS ventas,
+               p."marcaId" AS "marcaId"
+        FROM "Producto" p
+        LEFT JOIN "OrdenItem" oi ON oi."productoId" = p.id
+        LEFT JOIN "Orden" o ON o.id = oi."ordenId"
+        LEFT JOIN "Pago" pg ON pg."ordenId" = o.id
+        WHERE p."categoriaId" = ${catId}
+          AND p."activo" = true
+          AND p."stockActual" > 0
+          AND (
+            oi.id IS NULL
+            OR (
+              (
+                o."estado" = ANY(ARRAY['PAGADA'::"EstadoOrden",'ENVIADA'::"EstadoOrden",'ENTREGADA'::"EstadoOrden"])
+                OR pg.id IS NOT NULL
+              )
+              ${windowFilter}
             )
-            ${windowFilter}
           )
-        )
-      GROUP BY p.id, p."marcaId"
-      ORDER BY ventas DESC
-      LIMIT ${takePerCat * 2};
-    `);
+        GROUP BY p.id, p."marcaId"
+        ORDER BY ventas DESC
+        LIMIT ${takePerCat * 2};
+      `);
 
       let scored = rows
         .filter((r) => !exclude.has(r.productoId))
@@ -176,67 +176,158 @@ export class RecsService {
     return [...map.values()].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   }
 
+  // === NEW === Cuenta compras efectivas del usuario (ventana configurable)
+  private async countUserEffectivePurchases(userId: number, days = 365) {
+    const desde = this.fromDaysAgo(days);
+    const rows = await this.prisma.$queryRaw<{ cnt: bigint }[]>`
+      SELECT COUNT(*)::bigint AS cnt
+      FROM "Orden" o
+      LEFT JOIN "Pago" pg ON pg."ordenId" = o.id
+      WHERE o."userId" = ${userId}
+        AND (
+          o."estado" = ANY(ARRAY['PAGADA'::"EstadoOrden",'ENVIADA'::"EstadoOrden",'ENTREGADA'::"EstadoOrden"])
+          OR pg.id IS NOT NULL
+        )
+        AND COALESCE(pg."createdAt", o."updatedAt", o."createdAt") >= ${desde};
+    `;
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
+  // === NEW === Top productos globales (recientes) con opción de excluir Rx
+  async getGlobalTopProducts(options?: {
+    days?: number;
+    limit?: number;
+    excludeRx?: boolean;
+  }) {
+    const days = options?.days ?? 30;
+    const limit = options?.limit ?? 5;
+    const desde = this.fromDaysAgo(days);
+
+    const extraWhere = options?.excludeRx
+      ? Prisma.sql`AND p."requiereReceta" = false`
+      : Prisma.sql``;
+
+    const rows = await this.prisma.$queryRaw<
+      { productoId: number; ventas: number }[]
+    >(Prisma.sql`
+      SELECT p.id AS "productoId",
+             COALESCE(SUM(oi."cantidad"), 0) AS ventas
+      FROM "Producto" p
+      LEFT JOIN "OrdenItem" oi ON oi."productoId" = p.id
+      LEFT JOIN "Orden" o ON o.id = oi."ordenId"
+      LEFT JOIN "Pago" pg ON pg."ordenId" = o.id
+      WHERE p."activo" = true
+        AND p."stockActual" > 0
+        ${extraWhere}
+        AND (
+          oi.id IS NULL
+          OR (
+            (
+              o."estado" = ANY(ARRAY['PAGADA'::"EstadoOrden",'ENVIADA'::"EstadoOrden",'ENTREGADA'::"EstadoOrden"])
+              OR pg.id IS NOT NULL
+            )
+            AND COALESCE(pg."createdAt", o."updatedAt", o."createdAt") >= ${desde}
+          )
+        )
+      GROUP BY p.id
+      ORDER BY ventas DESC, p."actualizadoEn" DESC
+      LIMIT ${limit};
+    `);
+
+    return rows.map(r => ({ productoId: r.productoId, reason: 'top_global', score: Number(r.ventas) || 0 }));
+  }
+
+  // === NEW === Barajado estable con semilla (para no verse “fijo”)
+  private seededShuffle<T>(arr: T[], seed: number) {
+    const a = arr.slice();
+    let s = seed || 1;
+    for (let i = a.length - 1; i > 0; i--) {
+      s = (s * 1664525 + 1013904223) % 0xffffffff;
+      const j = s % (i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
   /** ====== 4) RECOMENDACIONES PARA HOME (con fallbacks escalonados) ====== */
-  async recsForHome(userId?: number) {
+  // === CHANGED === ahora soporta cold-start y límites diferenciados
+  async recsForHome(userId?: number, opts?: { fullLimit?: number; coldLimit?: number }) {
+    const fullLimit = opts?.fullLimit ?? 20;  // cuando ya hay señales
+    const coldLimit = opts?.coldLimit ?? 5;   // MUY poco para que no “parezca fake”
     const windowDays = 180;
 
-    // 4.1) categorías del usuario o globales
-    const userCats = userId
-      ? await this.getUserTopCategories(userId, windowDays)
-      : [];
-    const preferBrandsOf = userId
-      ? await this.prisma.ordenItem
-          .findMany({
-            where: {
-              orden: { userId, estado: { in: this.VALID_ORDER_STATES as any } },
-            },
-            orderBy: { orden: { createdAt: 'desc' } },
-            take: 12,
-            select: { productoId: true },
-          })
-          .then((r) => r.map((x) => x.productoId))
-      : [];
+    // visitante anónimo => top global reducido
+    if (!userId) {
+      const globals = await this.getGlobalTopProducts({ days: 30, limit: coldLimit, excludeRx: true });
+      return globals;
+    }
+
+    // cold-start si no tiene compras efectivas
+    const purchases = await this.countUserEffectivePurchases(userId, 365);
+    const isColdStart = purchases < 1;
+
+    if (isColdStart) {
+      const globals = await this.getGlobalTopProducts({ days: 30, limit: coldLimit, excludeRx: true });
+      return this.seededShuffle(globals, userId).slice(0, coldLimit);
+    }
+
+    // === Ya hay señales -> usar pipeline completo
+    const userCats = await this.getUserTopCategories(userId, windowDays);
+    const preferBrandsOf = await this.prisma.ordenItem
+      .findMany({
+        where: {
+          orden: { userId, estado: { in: this.VALID_ORDER_STATES as any } },
+        },
+        orderBy: { orden: { createdAt: 'desc' } },
+        take: 12,
+        select: { productoId: true },
+      })
+      .then((r) => r.map((x) => x.productoId));
 
     const primaryCats = userCats.length
       ? userCats
       : await this.getGlobalTopCategories(windowDays);
 
-    // 4.2) intento 1: con ventana y ventas recientes
+    // intento 1: con ventana y ventas recientes
     let items = await this.getTopProductsInCategories(primaryCats, {
       days: windowDays,
-      takePerCat: 8,
+      takePerCat: Math.ceil(fullLimit / Math.max(1, primaryCats.length)),
       preferBrandsOf,
     });
 
-    // 4.3) intento 2: sin ventana temporal (ventas históricas)
+    // intento 2: sin ventana temporal (ventas históricas)
     if (!items.length) {
       items = await this.getTopProductsInCategories(primaryCats, {
-        takePerCat: 8,
+        takePerCat: Math.ceil(fullLimit / Math.max(1, primaryCats.length)),
         preferBrandsOf,
         ignoreWindow: true,
       });
     }
 
-    // 4.4) intento 3: por actualización reciente (sin ventas)
+    // intento 3: por actualización reciente (sin ventas)
     if (!items.length) {
       items = await this.getTopProductsInCategories(primaryCats, {
-        takePerCat: 8,
+        takePerCat: Math.ceil(fullLimit / Math.max(1, primaryCats.length)),
         allowNoSalesFallback: true,
         preferBrandsOf,
       });
     }
 
-    // 4.5) intento 4: categorías globales (si veníamos del user) + fallback
+    // intento 4: categorías globales (si veníamos del user) + fallback
     if (!items.length && userCats.length) {
       const globalCats = await this.getGlobalTopCategories(windowDays);
       items = await this.getTopProductsInCategories(globalCats, {
-        takePerCat: 8,
+        takePerCat: Math.ceil(fullLimit / Math.max(1, globalCats.length)),
         preferBrandsOf: [],
         allowNoSalesFallback: true,
       });
     }
 
-    return items;
+    // Barajado leve del “tail” para no verse idéntico siempre
+    const head = items.slice(0, 6);
+    const tail = items.slice(6);
+    const shuffledTail = this.seededShuffle(tail, userId);
+    return [...head, ...shuffledTail].slice(0, fullLimit);
   }
 
   /** ====== 5) SIMILARES POR PRODUCTO ====== */
@@ -305,5 +396,39 @@ export class RecsService {
     }
 
     return items.slice(0, take);
+  }
+
+  // === NEW (Opcional) === “Trending” por delta 7d vs. 7d previos
+  async getTrendingProducts(limit = 5) {
+    const d7 = this.fromDaysAgo(7);
+    const d14 = this.fromDaysAgo(14);
+
+    const rows = await this.prisma.$queryRaw<
+      { productoId: number; v7: number; vprev: number; delta: number }[]
+    >`
+      WITH v AS (
+        SELECT p.id AS "productoId",
+               SUM(CASE WHEN COALESCE(pg."createdAt", o."updatedAt", o."createdAt") >= ${d7} THEN oi."cantidad" ELSE 0 END) AS v7,
+               SUM(CASE WHEN COALESCE(pg."createdAt", o."updatedAt", o."createdAt") >= ${d14}
+                         AND COALESCE(pg."createdAt", o."updatedAt", o."createdAt") < ${d7} THEN oi."cantidad" ELSE 0 END) AS vprev
+        FROM "Producto" p
+        LEFT JOIN "OrdenItem" oi ON oi."productoId" = p.id
+        LEFT JOIN "Orden" o ON o.id = oi."ordenId"
+        LEFT JOIN "Pago" pg ON pg."ordenId" = o.id
+        WHERE p."activo" = true AND p."stockActual" > 0
+          AND (
+            oi.id IS NULL OR (
+              o."estado" = ANY(ARRAY['PAGADA'::"EstadoOrden",'ENVIADA'::"EstadoOrden",'ENTREGADA'::"EstadoOrden"])
+              OR pg.id IS NOT NULL
+            )
+          )
+        GROUP BY p.id
+      )
+      SELECT "productoId", v7, vprev, (COALESCE(v7,0) - COALESCE(vprev,0))::numeric AS delta
+      FROM v
+      ORDER BY delta DESC, v7 DESC
+      LIMIT ${limit};
+    `;
+    return rows.map(r => ({ productoId: r.productoId, reason: 'trending_7d', score: Number(r.delta) }));
   }
 }
