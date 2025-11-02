@@ -26,6 +26,7 @@ import { verify } from 'crypto'
 import { RxVerifyModule } from './rx-verify/rx-verify.module'
 import { RecsModule } from './recs/recs.module'
 import { NotificacionesModule } from './notificaciones/notificaciones.module'
+import { SuscripcionesModule } from './suscripciones/suscripciones.module'
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module'
     RxVerifyModule,
     RecsModule,
     NotificacionesModule,
+    SuscripcionesModule,
   ],
   controllers: [MeController],
 })
