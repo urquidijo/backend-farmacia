@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
+import { NotificacionesService } from '../notificaciones/notificaciones.service'
 import Stripe from 'stripe'
 
 @Injectable()
 export class PagosService {
   private stripe: Stripe
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private notificacionesService: NotificacionesService,
+  ) {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2025-09-30.clover',
     })
@@ -109,6 +113,30 @@ facturaUrl = latestInvoice?.hosted_invoice_url ?? null
         })
 
         console.log(`✅ Pago confirmado y factura vinculada a orden #${ordenId}`)
+
+        // Enviar notificación de pago exitoso
+        try {
+          const userId = Number(session.metadata?.userId)
+          if (userId) {
+            // Obtener el registro de pago para acceder al monto
+            const pago = await this.prisma.pago.findFirst({
+              where: { stripeId: session.id },
+            })
+
+            if (pago) {
+              await this.notificacionesService.sendPaymentSuccessNotification(
+                userId,
+                ordenId,
+                pago.monto,
+              )
+              console.log(`📬 Notificación de pago enviada al usuario #${userId}`)
+            }
+          }
+        } catch (notifError) {
+          // No bloquear el webhook si la notificación falla
+          console.error('❌ Error enviando notificación de pago:', notifError)
+        }
+
         break
       }
 
