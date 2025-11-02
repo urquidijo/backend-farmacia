@@ -59,19 +59,21 @@ model RolePermission {
 }
 
 model Marca {
-  id        Int        @id @default(autoincrement())
-  nombre    String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  productos Producto[]
+  id             Int        @id @default(autoincrement())
+  nombre         String     @unique
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  productos      Producto[]
+  ofertaMarcas   OfertaMarca[]
 }
 
 model Categoria {
-  id        Int        @id @default(autoincrement())
-  nombre    String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  productos Producto[]
+  id               Int        @id @default(autoincrement())
+  nombre           String     @unique
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  productos        Producto[]
+  ofertaCategorias OfertaCategoria[]
 }
 
 model Unidad {
@@ -84,28 +86,29 @@ model Unidad {
 }
 
 model Producto {
-  id             Int           @id @default(autoincrement())
+  id             Int             @id @default(autoincrement())
   nombre         String
   descripcion    String?
-  stockMinimo    Int           @default(0)
-  activo         Boolean       @default(true)
-  creadoEn       DateTime      @default(now())
-  actualizadoEn  DateTime      @updatedAt
+  stockMinimo    Int             @default(0)
+  activo         Boolean         @default(true)
+  creadoEn       DateTime        @default(now())
+  actualizadoEn  DateTime        @updatedAt
   marcaId        Int
   categoriaId    Int
   unidadId       Int
   imageKey       String?
   imageUrl       String?
-  precio         Decimal       @default(0)
-  stockActual    Int           @default(0)
-  requiereReceta Boolean       @default(false)
+  precio         Decimal         @default(0)
+  stockActual    Int             @default(0)
+  requiereReceta Boolean         @default(false)
   alerts         Alert[]
   carritoItems   CarritoItem[]
   lotes          Lote[]
   ordenItems     OrdenItem[]
-  categoria      Categoria     @relation(fields: [categoriaId], references: [id])
-  marca          Marca         @relation(fields: [marcaId], references: [id])
-  unidad         Unidad        @relation(fields: [unidadId], references: [id])
+  categoria      Categoria       @relation(fields: [categoriaId], references: [id])
+  marca          Marca           @relation(fields: [marcaId], references: [id])
+  unidad         Unidad          @relation(fields: [unidadId], references: [id])
+  ofertaProductos OfertaProducto[]
 }
 
 model Cliente {
@@ -248,4 +251,78 @@ enum AlertSeverity {
 enum EstadoBitacora {
   EXITOSO
   FALLIDO
+}
+
+enum TipoDescuento {
+  PORCENTAJE
+  FIJO
+}
+
+enum EstadoOferta {
+  PENDIENTE
+  ACTIVA
+  FINALIZADA
+  CANCELADA
+}
+
+model Oferta {
+  id              Int             @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  tipoDescuento   TipoDescuento
+  valorDescuento  Decimal
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  estado          EstadoOferta    @default(PENDIENTE)
+  maxUsos         Int?
+  usosActuales    Int             @default(0)
+  activa          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  ofertaProductos OfertaProducto[]
+  ofertaCategorias OfertaCategoria[]
+  ofertaMarcas    OfertaMarca[]
+
+  @@index([activa])
+  @@index([fechaInicio, fechaFin])
+  @@index([estado])
+}
+
+model OfertaProducto {
+  id        Int      @id @default(autoincrement())
+  ofertaId  Int
+  productoId Int
+  createdAt DateTime @default(now())
+  oferta    Oferta   @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  producto  Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, productoId])
+  @@index([ofertaId])
+  @@index([productoId])
+}
+
+model OfertaCategoria {
+  id          Int      @id @default(autoincrement())
+  ofertaId    Int
+  categoriaId Int
+  createdAt   DateTime @default(now())
+  oferta      Oferta   @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, categoriaId])
+  @@index([ofertaId])
+  @@index([categoriaId])
+}
+
+model OfertaMarca {
+  id        Int      @id @default(autoincrement())
+  ofertaId  Int
+  marcaId   Int
+  createdAt DateTime @default(now())
+  oferta    Oferta   @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  marca     Marca    @relation(fields: [marcaId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, marcaId])
+  @@index([ofertaId])
+  @@index([marcaId])
 }
