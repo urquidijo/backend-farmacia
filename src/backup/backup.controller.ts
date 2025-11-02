@@ -12,7 +12,6 @@ import {
 import type { Response, Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BackupService } from './backup.service';
-import { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 enum ExportFormat {
@@ -33,78 +32,37 @@ export class BackupController {
     try {
       const { stream, filename, contentType } = await this.svc.export(format);
 
-      // 1) No enviamos headers todavía; primero esperamos el primer chunk o un error
-      const tee = new PassThrough();
+      // 🔧 Headers correctos y preventivos para proxies (Railway, Vercel)
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('X-Accel-Buffering', 'no'); // evita buffering intermedio
+      res.flushHeaders?.();
 
-      let headersSent = false;
-      let firstChunkWritten = false;
-
-      const onErrorEarly = (err: any) => {
-        if (!headersSent) {
-          // Error antes de enviar headers -> respondemos 500 (evita archivo 0B)
-          res.status(500).send(
-            typeof err?.message === 'string' ? err.message : 'Error generando backup',
-          );
+      // ⚡ Manejo de errores en el stream
+      stream.on('error', (err) => {
+        console.error('❌ Error en stream de backup:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Error generando backup');
         } else {
-          // Si ya mandamos headers, cerramos
-          try { res.end(); } catch {}
-        }
-      };
-
-      stream.once('error', onErrorEarly);
-
-      stream.once('data', async (chunk: Buffer) => {
-        try {
-          // 2) Ahora sí es seguro fijar headers (hay datos reales)
-          res.setHeader('Content-Type', contentType);
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-          res.setHeader('Cache-Control', 'no-cache');
-          res.setHeader('Pragma', 'no-cache');
-          res.setHeader('X-Accel-Buffering', 'no');
-          res.flushHeaders?.();
-          headersSent = true;
-
-          // Escribimos ese primer chunk manualmente y luego pipe del resto
-          firstChunkWritten = true;
-          tee.write(chunk);
-
-          // Propagamos errores posteriores (ya con headers enviados)
-          stream.on('error', (e) => {
-            console.error('❌ Stream error tardío:', e);
-            try { res.end(); } catch {}
-          });
-
-          // Pipea el resto
-          stream.pipe(tee);
-
-          // pipeline gestiona backpressure y cierre
-          await pipeline(tee, res);
           res.end();
-        } catch (err) {
-          onErrorEarly(err);
         }
       });
 
-      // Si el stream termina sin emitir ni un byte (DB vacía o error silencioso)
-      stream.once('end', async () => {
-        if (!headersSent) {
-          // Si terminó sin data, revisamos si alcanzó a escribir algo
-          if (!firstChunkWritten) {
-            res.status(500).send('No se generó contenido de backup (stream vacío).');
-          }
-        }
-      });
+      // 🚀 Enviar el stream directamente al cliente
+      await pipeline(stream, res);
 
-      // Arranca el flujo (necesario para disparar 'data'/'end')
-      stream.resume();
+      // 🚨 Asegura cierre del response (Railway puede mantenerlo abierto si no se cierra)
+      res.end();
     } catch (err: any) {
       console.error('❌ Error en export:', err);
       if (!res.headersSent) {
-        res
-          .status(500)
-          .send(typeof err?.message === 'string' ? err.message : 'Error generando backup');
+        res.status(500).send(
+          typeof err?.message === 'string' ? err.message : 'Error generando backup',
+        );
       } else {
-        try { res.end(); } catch {}
+        res.end();
       }
     }
   }
@@ -117,9 +75,8 @@ export class BackupController {
     }),
   )
   async restore(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
+    if (!file)
       throw new BadRequestException('Sube un archivo .sql, .sql.gz, .dump o .dump.gz');
-    }
 
     const name = (file.originalname || '').toLowerCase();
     const valid =
