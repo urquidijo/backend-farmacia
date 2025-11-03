@@ -77,7 +77,7 @@ export class PublicController {
       take: limitNum,
     });
 
-    // Convertir Decimal a número para enviar al frontend
+    // Convertir Decimal a número para enviar al frontend 
     return productos.map((p) => ({
       ...p,
       precio:

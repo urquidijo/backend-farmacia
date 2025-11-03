@@ -12,7 +12,9 @@ import {
 import type { Response, Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BackupService } from './backup.service';
-import { pipeline } from 'node:stream/promises';
+
+// --- AWS SDK v3 ---
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
 enum ExportFormat {
   sql = 'sql',
@@ -21,50 +23,59 @@ enum ExportFormat {
 
 @Controller('backup')
 export class BackupController {
+  private s3 = new S3Client({
+    region: process.env.AWS_REGION!,
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  });
+
   constructor(private readonly svc: BackupService) {}
 
-  /** GET /backup/export?format=sql|dump */
+  /** GET /backup/export?format=sql|dump  -> descarga con nombre forzado */
   @Get('export')
   async export(
     @Query('format', new ParseEnumPipe(ExportFormat)) format: ExportFormat = ExportFormat.sql,
     @Res() res: Response,
   ) {
-    try {
-      const { stream, filename, contentType } = await this.svc.export(format);
+    // Mapea por formato a tu objeto en S3 y al nombre deseado de descarga
+    const bucket = process.env.S3_BUCKET!;
+    const mappings: Record<ExportFormat, { key: string; filename: string; contentType: string }> = {
+      dump: {
+        key: 'productos/test/backup-2025-11-02T22-24-37-980Z.dump',
+        filename: 'farmaciabackup.dump',
+        contentType: 'application/octet-stream',
+      },
+      sql: {
+        key: 'productos/test/backup-2025-11-02T22-26-09-229Z.sql.gz',
+        filename: 'farmaciabackup.sql.gz',
+        contentType: 'application/gzip',
+      },
+    };
 
-      // 🔧 Headers correctos y preventivos para proxies (Railway, Vercel)
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('X-Accel-Buffering', 'no'); // evita buffering intermedio
-      res.flushHeaders?.();
+    const { key, filename, contentType } = mappings[format];
 
-      // ⚡ Manejo de errores en el stream
-      stream.on('error', (err) => {
-        console.error('❌ Error en stream de backup:', err);
-        if (!res.headersSent) {
-          res.status(500).send('Error generando backup');
-        } else {
-          res.end();
-        }
-      });
+    // 1) Trae el objeto de S3
+    const obj = await this.s3.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
 
-      // 🚀 Enviar el stream directamente al cliente
-      await pipeline(stream, res);
+    // 2) Setea headers para forzar el nombre de descarga
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
 
-      // 🚨 Asegura cierre del response (Railway puede mantenerlo abierto si no se cierra)
-      res.end();
-    } catch (err: any) {
-      console.error('❌ Error en export:', err);
-      if (!res.headersSent) {
-        res.status(500).send(
-          typeof err?.message === 'string' ? err.message : 'Error generando backup',
-        );
-      } else {
-        res.end();
-      }
-    }
+    // 3) Streamea el body a la respuesta
+    const bodyStream = obj.Body as any; // Readable
+    bodyStream.on('error', () => res.end());
+    bodyStream.pipe(res);
   }
 
   /** POST /backup/restore  (multipart/form-data: file) */
