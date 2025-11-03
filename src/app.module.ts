@@ -29,6 +29,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module'
 import { ProveedoresModule } from './proveedores/proveedores.module'
 import { PedidosModule } from './pedidos/pedidos.module'
 import { OrdenesCompraModule } from './ordenes-compra/ordenes-compra.module'
+import { SuscripcionesModule } from './suscripciones/suscripciones.module'
+import { VoiceAssistantModule } from './admin/voice-assistant/voice-assistant.module'
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { OrdenesCompraModule } from './ordenes-compra/ordenes-compra.module'
     ProveedoresModule,
     PedidosModule,
     OrdenesCompraModule,
+    SuscripcionesModule,
+    VoiceAssistantModule,
   ],
   controllers: [MeController],
 })

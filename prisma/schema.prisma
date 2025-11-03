@@ -8,27 +8,21 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  passwordHash String
-  firstName    String
-  lastName     String
-  status       UserStatus    @default(ACTIVE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  telefono     String?
-  carritoItems CarritoItem[]
-  ordenes      Orden[]
-  roles        UserRole[]  
-  deviceTokens DeviceToken[]
-
-  Bitacora     Bitacora[]
-}
-
-enum Platform {
-  ANDROID
-  IOS
-  WEB
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  status        UserStatus      @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  telefono      String?
+  carritoItems  CarritoItem[]
+  deviceTokens  DeviceToken[]
+  ordenes       Orden[]
+  roles         UserRole[]
+  suscripciones Suscripcion[]
+  Bitacora      Bitacora[]
 }
 
 model DeviceToken {
@@ -39,8 +33,7 @@ model DeviceToken {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([active])
@@ -82,19 +75,21 @@ model RolePermission {
 }
 
 model Marca {
-  id        Int        @id @default(autoincrement())
-  nombre    String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  productos Producto[]
+  id          Int           @id @default(autoincrement())
+  nombre      String        @unique
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  OfertaMarca OfertaMarca[]
+  productos   Producto[]
 }
 
 model Categoria {
-  id        Int        @id @default(autoincrement())
-  nombre    String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  productos Producto[]
+  id              Int               @id @default(autoincrement())
+  nombre          String            @unique
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  OfertaCategoria OfertaCategoria[]
+  productos       Producto[]
 }
 
 model Unidad {
@@ -107,30 +102,32 @@ model Unidad {
 }
 
 model Producto {
-  id             Int           @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   nombre         String
   descripcion    String?
-  stockMinimo    Int           @default(0)
-  activo         Boolean       @default(true)
-  creadoEn       DateTime      @default(now())
-  actualizadoEn  DateTime      @updatedAt
+  stockMinimo    Int              @default(0)
+  activo         Boolean          @default(true)
+  creadoEn       DateTime         @default(now())
+  actualizadoEn  DateTime         @updatedAt
   marcaId        Int
   categoriaId    Int
   unidadId       Int
   proveedorId    Int?
   imageKey       String?
   imageUrl       String?
-  precio         Decimal       @default(0)
-  stockActual    Int           @default(0)
-  requiereReceta Boolean       @default(false)
+  precio         Decimal          @default(0)
+  stockActual    Int              @default(0)
+  requiereReceta Boolean          @default(false)
   alerts         Alert[]
   carritoItems   CarritoItem[]
   lotes          Lote[]
+  OfertaProducto OfertaProducto[]
   ordenItems     OrdenItem[]
   ordenCompraItems OrdenCompraItem[]
-  categoria      Categoria     @relation(fields: [categoriaId], references: [id])
-  marca          Marca         @relation(fields: [marcaId], references: [id])
-  unidad         Unidad        @relation(fields: [unidadId], references: [id])
+  suscripciones  Suscripcion[]
+  categoria      Categoria        @relation(fields: [categoriaId], references: [id])
+  marca          Marca            @relation(fields: [marcaId], references: [id])
+  unidad         Unidad           @relation(fields: [unidadId], references: [id])
   proveedor      Proveedor?    @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
 
   @@index([proveedorId])
@@ -268,6 +265,74 @@ model Pago {
   orden      Orden    @relation("OrdenPago", fields: [ordenId], references: [id])
 }
 
+model Oferta {
+  id              Int               @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  tipoDescuento   TipoDescuento
+  valorDescuento  Decimal
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  estado          EstadoOferta      @default(PENDIENTE)
+  maxUsos         Int?
+  usosActuales    Int               @default(0)
+  activa          Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  OfertaCategoria OfertaCategoria[]
+  OfertaMarca     OfertaMarca[]
+  OfertaProducto  OfertaProducto[]
+
+  @@index([activa])
+  @@index([estado])
+  @@index([fechaInicio, fechaFin])
+}
+
+model OfertaCategoria {
+  id          Int       @id @default(autoincrement())
+  ofertaId    Int
+  categoriaId Int
+  createdAt   DateTime  @default(now())
+  Categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  Oferta      Oferta    @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, categoriaId])
+  @@index([categoriaId])
+  @@index([ofertaId])
+}
+
+model OfertaMarca {
+  id        Int      @id @default(autoincrement())
+  ofertaId  Int
+  marcaId   Int
+  createdAt DateTime @default(now())
+  Marca     Marca    @relation(fields: [marcaId], references: [id], onDelete: Cascade)
+  Oferta    Oferta   @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, marcaId])
+  @@index([marcaId])
+  @@index([ofertaId])
+}
+
+model OfertaProducto {
+  id         Int      @id @default(autoincrement())
+  ofertaId   Int
+  productoId Int
+  createdAt  DateTime @default(now())
+  Oferta     Oferta   @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  Producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([ofertaId, productoId])
+  @@index([ofertaId])
+  @@index([productoId])
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
@@ -344,4 +409,66 @@ model OrdenCompraItem {
 enum EstadoBitacora {
   EXITOSO
   FALLIDO
+}
+
+enum EstadoOferta {
+  PENDIENTE
+  ACTIVA
+  FINALIZADA
+  CANCELADA
+}
+
+enum TipoDescuento {
+  PORCENTAJE
+  FIJO
+}
+
+model Suscripcion {
+  id                Int                    @id @default(autoincrement())
+  userId            Int
+  productoId        Int
+  cantidad          Int                    @default(1)
+  frecuencia        FrecuenciaSuscripcion
+  diasPersonalizado Int?                   // Para frecuencias personalizadas (cada X días)
+  diaSemana         Int?                   // 0-6 (Domingo-Sábado) para frecuencia semanal
+  diaMes            Int?                   // 1-31 para frecuencia mensual
+  proximaFecha      DateTime
+  estado            EstadoSuscripcion      @default(ACTIVA)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  producto          Producto               @relation(fields: [productoId], references: [id])
+  logs              SuscripcionLog[]
+
+  @@index([userId, estado])
+  @@index([proximaFecha, estado])
+  @@index([productoId])
+}
+
+model SuscripcionLog {
+  id            Int         @id @default(autoincrement())
+  suscripcionId Int
+  accion        String      // CREATED, EXECUTED, SKIPPED, PAUSED, RESUMED, CANCELLED, FAILED
+  resultado     String?     // SUCCESS, FAILED, etc.
+  mensaje       String?     // Mensaje descriptivo o error
+  createdAt     DateTime    @default(now())
+
+  suscripcion   Suscripcion @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+
+  @@index([suscripcionId, createdAt])
+}
+
+enum FrecuenciaSuscripcion {
+  SEMANAL       // Cada semana en un día específico
+  QUINCENAL     // Cada 15 días
+  MENSUAL       // Cada mes en un día específico
+  PERSONALIZADA // Cada X días (configurado por diasPersonalizado)
+}
+
+enum EstadoSuscripcion {
+  ACTIVA     // Procesando compras automáticas
+  PAUSADA    // Temporalmente desactivada por usuario
+  SUSPENDIDA // Desactivada por el sistema (fallo de pago, sin stock)
+  CANCELADA  // Cancelada definitivamente
 }
