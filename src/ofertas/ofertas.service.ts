@@ -14,10 +14,11 @@ export class OfertasService {
 
   async create(createOfertaDto: CreateOfertaDto) {
     try {
-      const { productos, categorias, marcas, ...ofertaData } = createOfertaDto;
+      // ✅ CORREGIDO: Usar los nombres correctos del DTO
+      const { ofertaProductos, ofertaCategorias, ofertaMarcas, ...ofertaData } = createOfertaDto;
 
-      // Validar que al menos haya un tipo de asociación
-      if (!productos?.length && !categorias?.length && !marcas?.length) {
+      // ✅ CORREGIDO: Actualizar nombres en la validación
+      if (!ofertaProductos?.length && !ofertaCategorias?.length && !ofertaMarcas?.length) {
         throw new BadRequestException(
           'La oferta debe estar asociada a al menos un producto, categoría o marca',
         );
@@ -31,19 +32,20 @@ export class OfertasService {
       return await this.prisma.oferta.create({
         data: {
           ...ofertaData,
-          productos: productos
+          // ✅✅✅ CORREGIDO: Usar los nombres correctos del schema Prisma
+          ofertaProductos: ofertaProductos
             ? {
-                create: productos.map((p) => ({ productoId: p.productoId })),
+                create: ofertaProductos.map((p) => ({ productoId: p.productoId })),
               }
             : undefined,
-          categorias: categorias
+          ofertaCategorias: ofertaCategorias
             ? {
-                create: categorias.map((c) => ({ categoriaId: c.categoriaId })),
+                create: ofertaCategorias.map((c) => ({ categoriaId: c.categoriaId })),
               }
             : undefined,
-          marcas: marcas
+          ofertaMarcas: ofertaMarcas
             ? {
-                create: marcas.map((m) => ({ marcaId: m.marcaId })),
+                create: ofertaMarcas.map((m) => ({ marcaId: m.marcaId })),
               }
             : undefined,
         },
@@ -144,7 +146,8 @@ export class OfertasService {
 
   async update(id: number, updateOfertaDto: UpdateOfertaDto) {
     try {
-      const { productos, categorias, marcas, ...ofertaData } = updateOfertaDto;
+      // ✅ CORREGIDO: Usar los nombres correctos del DTO
+      const { ofertaProductos, ofertaCategorias, ofertaMarcas, ...ofertaData } = updateOfertaDto;
 
       // Verificar que la oferta existe
       await this.findOne(id);
@@ -155,16 +158,16 @@ export class OfertasService {
         data: ofertaData,
       });
 
-      // Si se proporcionan relaciones, actualizarlas
-      if (productos || categorias || marcas) {
+      // ✅ CORREGIDO: Actualizar nombres en la condición
+      if (ofertaProductos !== undefined || ofertaCategorias !== undefined || ofertaMarcas !== undefined) {
         // Si se proporcionan nuevos arrays, reemplazar las relaciones existentes
-        if (productos !== undefined) {
+        if (ofertaProductos !== undefined) {
           await this.prisma.ofertaProducto.deleteMany({
             where: { ofertaId: id },
           });
-          if (productos.length > 0) {
+          if (ofertaProductos.length > 0) {
             await this.prisma.ofertaProducto.createMany({
-              data: productos.map((p) => ({
+              data: ofertaProductos.map((p) => ({
                 ofertaId: id,
                 productoId: p.productoId,
               })),
@@ -172,13 +175,13 @@ export class OfertasService {
           }
         }
 
-        if (categorias !== undefined) {
+        if (ofertaCategorias !== undefined) {
           await this.prisma.ofertaCategoria.deleteMany({
             where: { ofertaId: id },
           });
-          if (categorias.length > 0) {
+          if (ofertaCategorias.length > 0) {
             await this.prisma.ofertaCategoria.createMany({
-              data: categorias.map((c) => ({
+              data: ofertaCategorias.map((c) => ({
                 ofertaId: id,
                 categoriaId: c.categoriaId,
               })),
@@ -186,13 +189,13 @@ export class OfertasService {
           }
         }
 
-        if (marcas !== undefined) {
+        if (ofertaMarcas !== undefined) {
           await this.prisma.ofertaMarca.deleteMany({
             where: { ofertaId: id },
           });
-          if (marcas.length > 0) {
+          if (ofertaMarcas.length > 0) {
             await this.prisma.ofertaMarca.createMany({
-              data: marcas.map((m) => ({
+              data: ofertaMarcas.map((m) => ({
                 ofertaId: id,
                 marcaId: m.marcaId,
               })),
@@ -249,4 +252,3 @@ export class OfertasService {
     }
   }
 }
-

@@ -2,7 +2,8 @@ import {
   IsString,
   IsNotEmpty,
   IsEnum,
-  IsDecimal,
+  IsNumber,
+  Min,
   IsDateString,
   IsOptional,
   IsInt,
@@ -46,7 +47,10 @@ export class CreateOfertaDto {
   @IsNotEmpty()
   tipoDescuento: 'PORCENTAJE' | 'FIJO';
 
-  @IsDecimal({ decimal_digits: '0,2' })
+  // ✅ Corregido: reemplaza @IsDecimal por @IsNumber
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El valor del descuento debe tener hasta 2 decimales.' })
+  @Min(0, { message: 'El valor del descuento no puede ser negativo.' })
   @IsNotEmpty()
   valorDescuento: number;
 
@@ -74,18 +78,17 @@ export class CreateOfertaDto {
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateOfertaProductoDto)
-  productos?: CreateOfertaProductoDto[];
+  ofertaProductos?: CreateOfertaProductoDto[];
 
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateOfertaCategoriaDto)
-  categorias?: CreateOfertaCategoriaDto[];
+  ofertaCategorias?: CreateOfertaCategoriaDto[];
 
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateOfertaMarcaDto)
-  marcas?: CreateOfertaMarcaDto[];
+  ofertaMarcas?: CreateOfertaMarcaDto[];
 }
-

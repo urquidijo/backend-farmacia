@@ -25,11 +25,8 @@ import { BackupModule } from './backup/backup.module'
 import { verify } from 'crypto'
 import { RxVerifyModule } from './rx-verify/rx-verify.module'
 import { RecsModule } from './recs/recs.module'
-<<<<<<< HEAD
 import { OfertasModule } from './ofertas/ofertas.module'
-=======
 import { NotificacionesModule } from './notificaciones/notificaciones.module'
->>>>>>> master
 
 @Module({
   imports: [
@@ -56,11 +53,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module'
     BackupModule,
     RxVerifyModule,
     RecsModule,
-<<<<<<< HEAD
     OfertasModule,
-=======
     NotificacionesModule,
->>>>>>> master
   ],
   controllers: [MeController],
 })

@@ -21,63 +21,76 @@ export class ProductosService {
 }
 
   async findAll(q?: string, page: number = 1, size: number = 10) {
-    const where = q
-      ? {
-          OR: [
-            { nombre: { contains: q, mode: 'insensitive' as const } },
-            { descripcion: { contains: q, mode: 'insensitive' as const } },
-            { marca: { nombre: { contains: q, mode: 'insensitive' as const } } },
-            { categoria: { nombre: { contains: q, mode: 'insensitive' as const } } },
-          ],
-        }
-      : {}
+  const where = q
+    ? {
+        OR: [
+          { nombre: { contains: q, mode: 'insensitive' as const } },
+          { descripcion: { contains: q, mode: 'insensitive' as const } },
+          { marca: { nombre: { contains: q, mode: 'insensitive' as const } } },
+          { categoria: { nombre: { contains: q, mode: 'insensitive' as const } } },
+        ],
+      }
+    : {}
 
-    const [productos, total] = await Promise.all([
-      this.prisma.producto.findMany({
-        where,
-        orderBy: { nombre: 'asc' },
-        include: {
-          marca: true,
-          categoria: true,
-          unidad: true,
-        },
-        skip: (page - 1) * size,
-        take: size,
-      }),
-      this.prisma.producto.count({ where }),
-    ])
+  const [productos, total, ofertasActivas] = await Promise.all([
+    this.prisma.producto.findMany({
+      where,
+      orderBy: { nombre: 'asc' },
+      include: {
+        marca: true,
+        categoria: true,
+        unidad: true,
+      },
+      skip: (page - 1) * size,
+      take: size,
+    }),
+    this.prisma.producto.count({ where }),
+    this.getOfertasActivas(),
+  ]);
 
+  const productosConDescuento = productos.map(producto => {
+    const descuento = this.calcularMejorDescuento(producto, ofertasActivas);
     return {
-      productos: productos.map(p => ({
-        ...p,
-        precio: p.precio.toNumber(),
-      })),
-      total,
-      page,
-      size,
-      totalPages: Math.ceil(total / size),
-    }
+      ...producto,
+      precio: producto.precio.toNumber(),
+      descuento: descuento ? descuento / 100 : null, // Convertir porcentaje a decimal
+    };
+  });
+
+  return {
+    productos: productosConDescuento,
+    total,
+    page,
+    size,
+    totalPages: Math.ceil(total / size),
   }
+}
 
   async findOne(id: number) {
-    const producto = await this.prisma.producto.findUnique({
+  const [producto, ofertasActivas] = await Promise.all([
+    this.prisma.producto.findUnique({
       where: { id },
       include: {
         marca: true,
         categoria: true,
         unidad: true,
       },
-    })
+    }),
+    this.getOfertasActivas(),
+  ]);
 
-    if (!producto) {
-      throw new NotFoundException(`Producto con ID ${id} no encontrado`)
-    }
-
-    return {
-      ...producto,
-      precio: producto.precio.toNumber(),
-    }
+  if (!producto) {
+    throw new NotFoundException(`Producto con ID ${id} no encontrado`);
   }
+
+  const descuento = this.calcularMejorDescuento(producto, ofertasActivas);
+
+  return {
+    ...producto,
+    precio: producto.precio.toNumber(),
+    descuento: descuento ? descuento / 100 : null, // Convertir porcentaje a decimal
+  };
+}
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
     // Verificar que el producto existe
@@ -158,4 +171,62 @@ export class ProductosService {
       throw new BadRequestException(`Unidad con ID ${unidadId} no existe`)
     }
   }
+
+  private async getOfertasActivas() {
+    const now = new Date();
+    const ofertas = await this.prisma.oferta.findMany({
+      where: {
+        activa: true,
+        fechaInicio: { lte: now },
+        fechaFin: { gte: now }
+      },
+      include: {
+        ofertaProductos: {
+          select: { productoId: true }
+        },
+        ofertaCategorias: {
+          select: { categoriaId: true }
+        },
+        ofertaMarcas: {
+          select: { marcaId: true }
+        }
+      }
+    });
+
+    // Filtramos las ofertas que han alcanzado su máximo de usos
+    return ofertas.filter(oferta => 
+      oferta.maxUsos === null || oferta.usosActuales < oferta.maxUsos
+    );
+  }
+
+private calcularMejorDescuento(producto: any, ofertas: any[]): number | null {
+    let mejorDescuento = null;
+    
+    for (const oferta of ofertas) {
+      // Verificar si el producto está directamente en la oferta
+      const tieneProductoDirecto = oferta.ofertaProductos.some(
+        (op: any) => op.productoId === producto.id
+      );
+
+      // Verificar si la categoría del producto está en la oferta
+      const tieneCategoriaOferta = oferta.ofertaCategorias.some(
+        (oc: any) => oc.categoriaId === producto.categoriaId
+      );
+
+      // Verificar si la marca del producto está en la oferta
+      const tieneMarcaOferta = oferta.ofertaMarcas.some(
+        (om: any) => om.marcaId === producto.marcaId
+      );
+
+      if (tieneProductoDirecto || tieneCategoriaOferta || tieneMarcaOferta) {
+        // Si no hay descuento previo o este descuento es mejor, actualizamos
+        if (mejorDescuento === null || oferta.valorDescuento > mejorDescuento) {
+          mejorDescuento = oferta.valorDescuento;
+        }
+      }
+    }
+
+    return mejorDescuento;
+  }
+
 }
