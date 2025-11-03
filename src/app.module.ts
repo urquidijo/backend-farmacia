@@ -27,6 +27,7 @@ import { RxVerifyModule } from './rx-verify/rx-verify.module'
 import { RecsModule } from './recs/recs.module'
 import { NotificacionesModule } from './notificaciones/notificaciones.module'
 import { SuscripcionesModule } from './suscripciones/suscripciones.module'
+import { VoiceAssistantModule } from './admin/voice-assistant/voice-assistant.module'
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { SuscripcionesModule } from './suscripciones/suscripciones.module'
     RecsModule,
     NotificacionesModule,
     SuscripcionesModule,
+    VoiceAssistantModule,
   ],
   controllers: [MeController],
 })
