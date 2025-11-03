@@ -21,6 +21,15 @@ type AlertWithRelations = Prisma.AlertGetPayload<{
         stockMinimo: true
         marca: { select: { nombre: true } }
         categoria: { select: { nombre: true } }
+        proveedor: {
+          select: {
+            id: true
+            nombre: true
+            contacto: true
+            telefono: true
+            email: true
+          }
+        }
       }
     }
     lote: {
@@ -63,13 +72,17 @@ export class AlertsService {
   async syncAllAlerts(options: {
     source?: 'manual' | 'cron' | 'inventory'
     windowDays?: number
+    emit?: boolean
   } = {}) {
     const windowDays = options.windowDays ?? this.getDefaultWindowDays()
+    const shouldEmit = options.emit ?? true
     const stockChanges = await this.refreshStockAlerts()
     const expiryChanges = await this.refreshExpiryAlerts(windowDays)
 
-    this.emitChanges(stockChanges)
-    this.emitChanges(expiryChanges)
+    if (shouldEmit) {
+      this.emitChanges(stockChanges)
+      this.emitChanges(expiryChanges)
+    }
 
     if (options.source === 'cron') {
       this.logger.log(
@@ -97,7 +110,7 @@ export class AlertsService {
   }
 
   async getAlerts(params: AlertsQueryParams = {}) {
-    await this.syncAllAlerts({ source: 'manual' })
+    await this.syncAllAlerts({ source: 'manual', emit: false })
 
     const page = params.page && params.page > 0 ? params.page : 1
     const pageSize =
@@ -534,6 +547,15 @@ export class AlertsService {
           stockMinimo: true,
           marca: { select: { nombre: true } },
           categoria: { select: { nombre: true } },
+          proveedor: {
+            select: {
+              id: true,
+              nombre: true,
+              contacto: true,
+              telefono: true,
+              email: true,
+            },
+          },
         },
       },
       lote: {
@@ -612,6 +634,15 @@ export class AlertsService {
         categoria: alert.producto.categoria?.nombre ?? null,
         stockActual: alert.producto.stockActual,
         stockMinimo: alert.producto.stockMinimo,
+        proveedor: alert.producto.proveedor
+          ? {
+              id: alert.producto.proveedor.id,
+              nombre: alert.producto.proveedor.nombre,
+              contacto: alert.producto.proveedor.contacto,
+              telefono: alert.producto.proveedor.telefono,
+              email: alert.producto.proveedor.email,
+            }
+          : null,
       },
       lote: alert.lote
         ? {

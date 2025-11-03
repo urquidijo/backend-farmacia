@@ -117,6 +117,7 @@ model Producto {
   marcaId        Int
   categoriaId    Int
   unidadId       Int
+  proveedorId    Int?
   imageKey       String?
   imageUrl       String?
   precio         Decimal       @default(0)
@@ -126,9 +127,30 @@ model Producto {
   carritoItems   CarritoItem[]
   lotes          Lote[]
   ordenItems     OrdenItem[]
+  ordenCompraItems OrdenCompraItem[]
   categoria      Categoria     @relation(fields: [categoriaId], references: [id])
   marca          Marca         @relation(fields: [marcaId], references: [id])
   unidad         Unidad        @relation(fields: [unidadId], references: [id])
+  proveedor      Proveedor?    @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+
+  @@index([proveedorId])
+}
+
+model Proveedor {
+  id        Int        @id @default(autoincrement())
+  nombre    String
+  contacto  String?
+  telefono  String?
+  email     String?
+  direccion String?
+  notas     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  productos Producto[]
+  ordenes   OrdenCompra[]
+
+  @@index([nombre])
+  @@index([email])
 }
 
 model Cliente {
@@ -186,10 +208,12 @@ model Lote {
   codigo     String?
   cantidad   Int      @default(0)
   fechaVenc  DateTime
+  ordenCompraId Int?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   alerts     Alert[]
   producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  ordenCompra OrdenCompra? @relation(fields: [ordenCompraId], references: [id], onDelete: SetNull)
 
   @@index([productoId])
   @@index([fechaVenc])
@@ -266,6 +290,55 @@ enum AlertSeverity {
   INFO
   WARNING
   CRITICAL
+}
+
+enum EstadoOrdenCompra {
+  BORRADOR
+  ENVIADA
+  CONFIRMADA
+  RECIBIDA
+  CERRADA
+  CANCELADA
+}
+
+model OrdenCompra {
+  id             Int               @id @default(autoincrement())
+  proveedorId    Int
+  estado         EstadoOrdenCompra @default(BORRADOR)
+  fechaCreacion  DateTime          @default(now())
+  fechaEnvio     DateTime?
+  fechaRecepcion DateTime?
+  totalEstimado  Decimal?
+  notas          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  proveedor      Proveedor         @relation(fields: [proveedorId], references: [id], onDelete: Restrict)
+  items          OrdenCompraItem[]
+  lotes          Lote[]
+
+  @@index([proveedorId])
+  @@index([estado, fechaCreacion])
+}
+
+model OrdenCompraItem {
+  id             Int       @id @default(autoincrement())
+  ordenCompraId  Int
+  productoId     Int
+  cantidadSolic  Int       @default(0)
+  cantidadRecib  Int       @default(0)
+  costoUnitario  Decimal?
+  subtotal       Decimal?
+  notas          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  orden          OrdenCompra @relation(fields: [ordenCompraId], references: [id], onDelete: Cascade)
+  producto       Producto    @relation(fields: [productoId], references: [id], onDelete: Restrict)
+
+  @@index([ordenCompraId])
+  @@index([productoId])
+  @@unique([ordenCompraId, productoId])
 }
 
 enum EstadoBitacora {

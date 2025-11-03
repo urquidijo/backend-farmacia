@@ -11,6 +11,13 @@ export type AlertListItem = {
     categoria?: string | null
     stockActual: number | null
     stockMinimo: number | null
+    proveedor?: {
+      id: number
+      nombre: string
+      contacto?: string | null
+      telefono?: string | null
+      email?: string | null
+    } | null
   }
   lote?: {
     id: number

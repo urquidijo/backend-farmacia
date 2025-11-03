@@ -1,36 +1,46 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateProductoDto } from './dto/create-producto.dto'
 import { UpdateProductoDto } from './dto/update-producto.dto'
 
 @Injectable()
 export class ProductosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(createProductoDto: CreateProductoDto) {
-    // Verificar que existan las relaciones
-    await this.validateRelations(createProductoDto.marcaId, createProductoDto.categoriaId, createProductoDto.unidadId)
+    await this.validateRelations(
+      createProductoDto.marcaId,
+      createProductoDto.categoriaId,
+      createProductoDto.unidadId,
+      createProductoDto.proveedorId ?? undefined,
+    )
 
     return this.prisma.producto.create({
-    data: {
-      ...createProductoDto,
-      requiereReceta: createProductoDto.requiereReceta ?? false, // <- importante
-    },
-    include: { marca: true, categoria: true, unidad: true },
-  })
-}
+      data: {
+        ...createProductoDto,
+        requiereReceta: createProductoDto.requiereReceta ?? false,
+      },
+      include: { marca: true, categoria: true, unidad: true, proveedor: true },
+    })
+  }
 
-  async findAll(q?: string, page: number = 1, size: number = 10) {
-    const where = q
-      ? {
-          OR: [
-            { nombre: { contains: q, mode: 'insensitive' as const } },
-            { descripcion: { contains: q, mode: 'insensitive' as const } },
-            { marca: { nombre: { contains: q, mode: 'insensitive' as const } } },
-            { categoria: { nombre: { contains: q, mode: 'insensitive' as const } } },
-          ],
-        }
-      : {}
+  async findAll(q?: string, page = 1, size = 10, proveedorId?: number) {
+    const where: Prisma.ProductoWhereInput = {}
+
+    if (q?.trim()) {
+      where.OR = [
+        { nombre: { contains: q, mode: 'insensitive' as const } },
+        { descripcion: { contains: q, mode: 'insensitive' as const } },
+        { marca: { nombre: { contains: q, mode: 'insensitive' as const } } },
+        { categoria: { nombre: { contains: q, mode: 'insensitive' as const } } },
+        { proveedor: { nombre: { contains: q, mode: 'insensitive' as const } } },
+      ]
+    }
+
+    if (proveedorId) {
+      where.proveedorId = proveedorId
+    }
 
     const [productos, total] = await Promise.all([
       this.prisma.producto.findMany({
@@ -40,6 +50,7 @@ export class ProductosService {
           marca: true,
           categoria: true,
           unidad: true,
+          proveedor: true,
         },
         skip: (page - 1) * size,
         take: size,
@@ -48,7 +59,7 @@ export class ProductosService {
     ])
 
     return {
-      productos: productos.map(p => ({
+      productos: productos.map((p) => ({
         ...p,
         precio: p.precio.toNumber(),
       })),
@@ -66,6 +77,7 @@ export class ProductosService {
         marca: true,
         categoria: true,
         unidad: true,
+        proveedor: true,
       },
     })
 
@@ -80,32 +92,35 @@ export class ProductosService {
   }
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
-    // Verificar que el producto existe
-    const existingProduct = await this.prisma.producto.findUnique({
-      where: { id },
-    })
-
-    if (!existingProduct) {
+    const existing = await this.prisma.producto.findUnique({ where: { id } })
+    if (!existing) {
       throw new NotFoundException(`Producto con ID ${id} no encontrado`)
     }
 
-    // Verificar relaciones si se están actualizando
-    if (updateProductoDto.marcaId || updateProductoDto.categoriaId || updateProductoDto.unidadId) {
+    if (
+      updateProductoDto.marcaId ||
+      updateProductoDto.categoriaId ||
+      updateProductoDto.unidadId ||
+      Object.prototype.hasOwnProperty.call(updateProductoDto, 'proveedorId')
+    ) {
       await this.validateRelations(
-        updateProductoDto.marcaId || existingProduct.marcaId,
-        updateProductoDto.categoriaId || existingProduct.categoriaId,
-        updateProductoDto.unidadId || existingProduct.unidadId
+        updateProductoDto.marcaId ?? existing.marcaId,
+        updateProductoDto.categoriaId ?? existing.categoriaId,
+        updateProductoDto.unidadId ?? existing.unidadId,
+        Object.prototype.hasOwnProperty.call(updateProductoDto, 'proveedorId')
+          ? updateProductoDto.proveedorId ?? undefined
+          : existing.proveedorId ?? undefined,
       )
     }
 
-     return this.prisma.producto.update({
-    where: { id },
-    data: {
-      ...updateProductoDto, // incluye requiereReceta si vino en el body
-    },
-    include: { marca: true, categoria: true, unidad: true },
-  })
-}
+    return this.prisma.producto.update({
+      where: { id },
+      data: {
+        ...updateProductoDto,
+      },
+      include: { marca: true, categoria: true, unidad: true, proveedor: true },
+    })
+  }
 
   async remove(id: number) {
     try {
@@ -129,9 +144,7 @@ export class ProductosService {
         await tx.ordenItem.deleteMany({ where: { productoId: id } })
         await tx.carritoItem.deleteMany({ where: { productoId: id } })
 
-        return tx.producto.delete({
-          where: { id },
-        })
+        return tx.producto.delete({ where: { id } })
       })
     } catch (error: any) {
       if (error.code === 'P2025') {
@@ -141,11 +154,19 @@ export class ProductosService {
     }
   }
 
-  private async validateRelations(marcaId: number, categoriaId: number, unidadId: number) {
-    const [marca, categoria, unidad] = await Promise.all([
+  private async validateRelations(
+    marcaId: number,
+    categoriaId: number,
+    unidadId: number,
+    proveedorId?: number,
+  ) {
+    const [marca, categoria, unidad, proveedor] = await Promise.all([
       this.prisma.marca.findUnique({ where: { id: marcaId } }),
       this.prisma.categoria.findUnique({ where: { id: categoriaId } }),
       this.prisma.unidad.findUnique({ where: { id: unidadId } }),
+      typeof proveedorId === 'number'
+        ? this.prisma.proveedor.findUnique({ where: { id: proveedorId } })
+        : Promise.resolve(null),
     ])
 
     if (!marca) {
@@ -156,6 +177,9 @@ export class ProductosService {
     }
     if (!unidad) {
       throw new BadRequestException(`Unidad con ID ${unidadId} no existe`)
+    }
+    if (typeof proveedorId === 'number' && !proveedor) {
+      throw new BadRequestException(`Proveedor con ID ${proveedorId} no existe`)
     }
   }
 }

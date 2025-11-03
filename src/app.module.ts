@@ -26,6 +26,9 @@ import { verify } from 'crypto'
 import { RxVerifyModule } from './rx-verify/rx-verify.module'
 import { RecsModule } from './recs/recs.module'
 import { NotificacionesModule } from './notificaciones/notificaciones.module'
+import { ProveedoresModule } from './proveedores/proveedores.module'
+import { PedidosModule } from './pedidos/pedidos.module'
+import { OrdenesCompraModule } from './ordenes-compra/ordenes-compra.module'
 
 @Module({
   imports: [
@@ -53,6 +56,9 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module'
     RxVerifyModule,
     RecsModule,
     NotificacionesModule,
+    ProveedoresModule,
+    PedidosModule,
+    OrdenesCompraModule,
   ],
   controllers: [MeController],
 })

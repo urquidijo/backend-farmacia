@@ -51,4 +51,13 @@ export class CreateProductoDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   requiereReceta?: boolean // si no viene, queda en false por default
+
+  @IsOptional()
+  @IsInt()
+  @Transform(({ value }) => {
+    if (value === null || value === undefined || value === '') return null
+    const parsed = typeof value === 'number' ? value : parseInt(value, 10)
+    return Number.isNaN(parsed) ? null : parsed
+  })
+  proveedorId?: number | null
 }

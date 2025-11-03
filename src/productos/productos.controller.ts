@@ -30,10 +30,16 @@ export class ProductosController {
   }
 
   @Get()
-  findAll(@Query('q') q?: string, @Query('page') page?: string, @Query('size') size?: string) {
+  findAll(
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('size') size?: string,
+    @Query('proveedorId') proveedorId?: string,
+  ) {
     const pageNum = page ? parseInt(page) : 1
     const sizeNum = size ? parseInt(size) : 10
-    return this.productosService.findAll(q, pageNum, sizeNum)
+    const proveedor = proveedorId ? parseInt(proveedorId) : undefined
+    return this.productosService.findAll(q, pageNum, sizeNum, proveedor)
   }
 
   @Get('presign')
