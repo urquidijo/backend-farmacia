@@ -3,7 +3,7 @@ import type { Response, Request } from 'express';
 import * as requestIp from 'request-ip';
 import { AuthService } from './auth.service';
 import { LoginDto } from '../usuarios/dto/login.dto';
-import { normalizeIp } from 'src/common/ip.util';
+import { normalizeIp } from '../common/ip.util';
 
 @Controller('auth')
 export class AuthController {
