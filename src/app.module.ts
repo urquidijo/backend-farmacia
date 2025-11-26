@@ -31,6 +31,7 @@ import { PedidosModule } from './pedidos/pedidos.module'
 import { OrdenesCompraModule } from './ordenes-compra/ordenes-compra.module'
 import { SuscripcionesModule } from './suscripciones/suscripciones.module'
 import { VoiceAssistantModule } from './admin/voice-assistant/voice-assistant.module'
+import { AnalyticsModule } from './analytics/analytics.module'
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { VoiceAssistantModule } from './admin/voice-assistant/voice-assistant.mo
     OrdenesCompraModule,
     SuscripcionesModule,
     VoiceAssistantModule,
+    AnalyticsModule,
   ],
   controllers: [MeController],
 })

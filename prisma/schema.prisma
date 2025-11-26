@@ -23,6 +23,7 @@ model User {
   roles         UserRole[]
   suscripciones Suscripcion[]
   Bitacora      Bitacora[]
+  segmento      ClienteSegmento?
 }
 
 model DeviceToken {
@@ -125,6 +126,8 @@ model Producto {
   ordenItems     OrdenItem[]
   ordenCompraItems OrdenCompraItem[]
   suscripciones  Suscripcion[]
+  forecasts      Forecast[]
+  reposicionAlertas ReposicionAlerta[]
   categoria      Categoria        @relation(fields: [categoriaId], references: [id])
   marca          Marca            @relation(fields: [marcaId], references: [id])
   unidad         Unidad           @relation(fields: [unidadId], references: [id])
@@ -471,4 +474,81 @@ enum EstadoSuscripcion {
   PAUSADA    // Temporalmente desactivada por usuario
   SUSPENDIDA // Desactivada por el sistema (fallo de pago, sin stock)
   CANCELADA  // Cancelada definitivamente
+}
+
+// ========== ANALYTICS & FORECASTING ==========
+
+model Forecast {
+  id                  Int      @id @default(autoincrement())
+  productoId          Int
+  periodo             DateTime // Fecha del pronóstico (ej: 2025-02-01)
+  cantidadProyectada  Decimal  // Cantidad esperada de ventas
+  nivelConfianza      Decimal  // 0.0 - 1.0 (ej: 0.85 = 85% de confianza)
+  tendencia           String?  // "alza", "baja", "estable"
+  modelo              String   @default("promedio_movil") // "regresion_lineal", "arima", "promedio_movil"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  producto            Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@unique([productoId, periodo])
+  @@index([productoId, periodo])
+  @@index([periodo])
+}
+
+model ClienteSegmento {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  segmento        SegmentoRFM @default(NUEVO)
+  recency         Int      // Días desde última compra
+  frequency       Int      // Número de compras totales
+  monetary        Decimal  // Total gastado
+  ultimaCompra    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([segmento])
+  @@index([userId])
+}
+
+model ReposicionAlerta {
+  id                 Int      @id @default(autoincrement())
+  productoId         Int
+  cantidadSugerida   Int      // Cantidad recomendada a ordenar
+  stockProyectado    Int      // Stock estimado al final del periodo
+  diasCobertura      Int      // Días que durará el stock actual
+  prioridad          PrioridadReposicion @default(MEDIA)
+  estado             EstadoReposicion @default(PENDIENTE)
+  fechaReposicion    DateTime // Fecha sugerida para realizar la orden
+  notas              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  producto           Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([productoId, estado])
+  @@index([prioridad, estado])
+}
+
+enum SegmentoRFM {
+  VIP           // Alta frecuencia, alto valor, reciente
+  FRECUENTE     // Alta frecuencia, compra regular
+  OCASIONAL     // Baja frecuencia
+  INACTIVO      // Sin compras recientes (>90 días)
+  NUEVO         // Primera compra o muy reciente
+}
+
+enum PrioridadReposicion {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum EstadoReposicion {
+  PENDIENTE
+  PROCESADA
+  IGNORADA
 }
