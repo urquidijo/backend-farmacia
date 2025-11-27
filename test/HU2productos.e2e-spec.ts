@@ -51,7 +51,7 @@ describe('HU2: Registrar Producto – E2E (Caja Negra)', () => {
 
     // Limpieza SOLO de productos de esta HU (no tocamos todo)
     await prisma.producto.deleteMany({
-      where: { nombre: 'HU2 Producto Test' },
+      where: { nombre: 'HU2 Product Test' },
     });
 
     // Buscar o crear datos base (marca, categoría, unidad, proveedor)
@@ -109,7 +109,7 @@ describe('HU2: Registrar Producto – E2E (Caja Negra)', () => {
     const res = await request(httpServer)
       .post('/productos')
       .send({
-        nombre: 'HU2 Producto Test',
+        nombre: 'HU2 Product Test',
         descripcion: 'Producto de prueba HU2',
         stockMinimo: 5,
         marcaId,
@@ -122,7 +122,7 @@ describe('HU2: Registrar Producto – E2E (Caja Negra)', () => {
       .expect(201);
 
     expect(res.body.id).toBeDefined();
-    expect(res.body.nombre).toBe('HU2 Producto Test');
+    expect(res.body.nombre).toBe('HU2 Product Test');
     // debería tomar el default false
     expect(res.body.requiereReceta).toBe(false);
   });
@@ -134,7 +134,7 @@ describe('HU2: Registrar Producto – E2E (Caja Negra)', () => {
     const res = await request(httpServer)
       .post('/productos')
       .send({
-        nombre: 'HU2 Producto Marca Invalida',
+        nombre: 'HU2 Product Marca Invalida',
         stockMinimo: 5,
         marcaId: marcaId + 999999, // marca inexistente
         categoriaId,
